@@ -1,7 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Image, Animated } from 'react-native';
 
-export default function Splash() {
+interface SplashProps {
+    onFinish: (role: string | null) => void;
+}
+
+export default function Splash({ onFinish }: SplashProps) {
     const dot1 = useRef(new Animated.Value(0)).current;
     const dot2 = useRef(new Animated.Value(0)).current;
     const dot3 = useRef(new Animated.Value(0)).current;
@@ -9,16 +13,8 @@ export default function Splash() {
     useEffect(() => {
         const createBounceAnimation = (dot: Animated.Value) => {
             return Animated.sequence([
-                Animated.timing(dot, {
-                    toValue: -15,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(dot, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
+                Animated.timing(dot, { toValue: -15, duration: 300, useNativeDriver: true }),
+                Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
             ]);
         };
 
@@ -29,7 +25,15 @@ export default function Splash() {
                 createBounceAnimation(dot3),
             ])
         ).start();
-    }, [dot1, dot2, dot3]);
+
+        // Check authentication status here and trigger redirect
+        setTimeout(() => {
+            // Simulated check: replace with actual AsyncStorage / Token check
+            const savedRole = null; // simulate not logged in
+            onFinish(savedRole);
+        }, 2500);
+
+    }, [dot1, dot2, dot3, onFinish]);
 
     return (
         <View style={styles.container}>
