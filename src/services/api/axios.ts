@@ -1,8 +1,9 @@
 import axios from 'axios';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = 'http://127.0.0.1:3001/v1'; // Localhost via adb reverse
+// 10.0.2.2 is the special alias to your host loopback interface in Android Emulator
+const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3001/v1' : 'http://127.0.0.1:3001/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,

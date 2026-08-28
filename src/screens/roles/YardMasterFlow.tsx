@@ -11,6 +11,10 @@ import Header from '../../components/Header';
 import { queuePhotosForUpload } from '../../services/api/PhotoUploader';
 import { useAuth } from '../../context/AuthContext';
 import SearchWagon from '../common/SearchWagon';
+import { useAssetConfig } from '../../hooks/useAssetConfig';
+import { useLocations } from '../../hooks/useLocations';
+
+// Removed hardcoded getShopsForCategory
 
 const Tab = createBottomTabNavigator();
 
@@ -111,10 +115,16 @@ const ObservableDispatchList = withObservables(['database'], ({ database }) => (
 
 function UnassignedScreen({ database }: any) {
   const [wagonNo, setWagonNo] = useState('');
+  const [assetCategory, setAssetCategory] = useState<'WAGON' | 'LOCO' | 'CRANE' | 'TOWER_CAR'>('WAGON');
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [allocModal, setAllocModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const { userId } = useAuth();
+  const { config, getShopsForCategory, loading } = useAssetConfig();
+
+  if (loading) {
+    return <Text style={{ padding: 20 }}>Loading configuration...</Text>;
+  }
 
   const takePhoto = async () => {
     const hasPermission = await requestCameraPermission();
@@ -135,10 +145,31 @@ function UnassignedScreen({ database }: any) {
 
   const handleRecordArrival = async () => {
     if (!wagonNo || !userId) return;
+
+    // Validation
+    const length = wagonNo.trim().length;
+    if (assetCategory === 'WAGON' && length !== 11) {
+      Alert.alert('Validation Error', 'Wagon number must be exactly 11 digits.');
+      return;
+    }
+    if (assetCategory === 'LOCO' && length !== 5) {
+      Alert.alert('Validation Error', 'Locomotive number must be exactly 5 digits.');
+      return;
+    }
+    if (assetCategory === 'CRANE' && length !== 6) {
+      Alert.alert('Validation Error', 'Crane number must be exactly 6 digits.');
+      return;
+    }
+    if (assetCategory === 'TOWER_CAR' && (length !== 3 && length !== 6)) {
+      Alert.alert('Validation Error', 'Tower Car number must be exactly 3 or 6 digits.');
+      return;
+    }
+
     try {
       await database.write(async () => {
         await database.collections.get('assets').create((asset: any) => {
-          asset.asset_number = wagonNo.toUpperCase();
+          asset.asset_number = wagonNo.toUpperCase().trim();
+          asset.asset_category = assetCategory;
           asset.current_status = 'NSY IN';
           asset.nsy_in_date = new Date().getTime();
           asset.is_active = true;
@@ -226,13 +257,36 @@ function UnassignedScreen({ database }: any) {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={[styles.card, { marginBottom: 16 }]}>
         <Text style={styles.cardTitle}>Record Arrival</Text>
+
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+          {Object.keys(config.categoryDestinations).map(cat => (
+            <TouchableOpacity 
+              key={cat} 
+              onPress={() => setAssetCategory(cat as any)}
+              style={{
+                flex: 1, padding: 8, borderRadius: 4, alignItems: 'center',
+                backgroundColor: assetCategory === cat ? '#0A74DA' : '#f1f5f9'
+              }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: '700', color: assetCategory === cat ? '#fff' : '#64748b' }}>
+                {cat.replace('_', ' ')}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <TextInput 
           style={styles.input} 
-          placeholder="Enter Wagon Number (e.g. BOXN-1234)" 
+          placeholder={`Enter ${assetCategory.replace('_', ' ')} Number`} 
           placeholderTextColor="#94a3b8"
           value={wagonNo}
           onChangeText={setWagonNo}
-          autoCapitalize="characters"
+          keyboardType="numeric"
+          maxLength={
+            assetCategory === 'WAGON' ? 11 : 
+            assetCategory === 'CRANE' ? 6 : 
+            assetCategory === 'TOWER_CAR' ? 6 : 5
+          }
         />
         
         <View style={styles.photoRow}>
@@ -270,7 +324,7 @@ function UnassignedScreen({ database }: any) {
             <Text style={styles.subtitle}>Select the destination repair shop:</Text>
             
             <View style={styles.shopGrid}>
-              {['WRS-1', 'WRS-2', 'WRS-3', 'WRS-4', 'WRS-5'].map(shop => (
+              {getShopsForCategory(selectedAsset?.asset_category).map(shop => (
                 <TouchableOpacity key={shop} style={styles.shopBtn} onPress={() => executeAllocation(shop)}>
                   <Text style={styles.shopBtnText}>{shop}</Text>
                 </TouchableOpacity>
@@ -289,6 +343,7 @@ function UnassignedScreen({ database }: any) {
 
 function AllocatedScreen({ database }: any) {
   const { userId } = useAuth();
+  const { getShopsForCategory } = useAssetConfig();
   const [routeModal, setRouteModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
@@ -336,7 +391,7 @@ function AllocatedScreen({ database }: any) {
             <Text style={styles.subtitle}>Select the NEW destination repair shop:</Text>
             
             <View style={styles.shopGrid}>
-              {['WRS-1', 'WRS-2', 'WRS-3', 'WRS-4', 'WRS-5'].map(shop => (
+              {getShopsForCategory(selectedAsset?.asset_category).map(shop => (
                 <TouchableOpacity key={shop} style={styles.shopBtn} onPress={() => executeReallocate(shop)}>
                   <Text style={styles.shopBtnText}>{shop}</Text>
                 </TouchableOpacity>
@@ -355,6 +410,9 @@ function AllocatedScreen({ database }: any) {
 
 function DispatchScreen({ database }: any) {
   const { userId } = useAuth();
+  const { getShopsForCategory } = useAssetConfig();
+  const { locations: qaLocations } = useLocations({ zone: 'QA' });
+  const qaLocation = qaLocations.length > 0 ? qaLocations[0].location_id : 'QA-LINE';
 
   const handleDispatch = async (asset: Asset) => {
     if (!userId) return;
@@ -368,7 +426,7 @@ function DispatchScreen({ database }: any) {
 
         await database.collections.get('movement_logs').create((log: any) => {
           log.asset_number = asset.asset_number;
-          log.from_location = 'WRS-5';
+          log.from_location = qaLocation;
           log.to_location = 'OUT';
           log.previous_status = 'Fit';
           log.new_status = 'NSY OUT';
@@ -405,12 +463,12 @@ function YardMasterFlowBase({ database }: any) {
           else if (route.name === 'Search') iconName = 'magnify';
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#0A74DA',
-        tabBarInactiveTintColor: '#94a3b8',
+        tabBarActiveTintColor: '#0F172A',
+        tabBarInactiveTintColor: '#64748B',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
-          borderTopColor: '#e2e8f0',
+          borderTopColor: '#E2E8F0',
           paddingBottom: 8,
           paddingTop: 8,
           height: 70,
@@ -443,35 +501,35 @@ function YardMasterFlowBase({ database }: any) {
 export default withDatabase(YardMasterFlowBase);
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   content: { padding: 16 },
-  card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16 },
-  cardTitle: { color: '#0f172a', fontSize: 15, fontWeight: '700', marginBottom: 16 },
-  subtitle: { color: '#64748b', marginBottom: 16 },
-  input: { backgroundColor: '#f8fafc', color: '#0f172a', padding: 16, borderWidth: 1, borderColor: '#cbd5e1', marginBottom: 16 },
-  primaryButton: { backgroundColor: '#0A74DA', padding: 16, alignItems: 'center' },
-  buttonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
-  itemTitle: { color: '#0f172a', fontSize: 14, fontWeight: '700' },
-  itemSub: { color: '#64748b', fontSize: 10, marginTop: 4 },
+  card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  cardTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700', marginBottom: 16 },
+  subtitle: { color: '#64748B', marginBottom: 16, fontSize: 13 },
+  input: { backgroundColor: '#FFFFFF', color: '#0F172A', padding: 12, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, fontSize: 13 },
+  primaryButton: { backgroundColor: '#0F172A', padding: 12, alignItems: 'center', borderRadius: 6 },
+  buttonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 13 },
+  itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
+  itemTitle: { color: '#0F172A', fontSize: 14, fontWeight: '600' },
+  itemSub: { color: '#64748B', fontSize: 12, marginTop: 4 },
   buttonRow: { flexDirection: 'row', gap: 8 },
-  actionBtn: { backgroundColor: '#f1f5f9', paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1, borderColor: '#cbd5e1', justifyContent: 'center' },
-  actionBtnText: { color: '#0f172a', fontWeight: '600' },
-  successBtn: { backgroundColor: '#10b981', paddingHorizontal: 16, paddingVertical: 8, justifyContent: 'center' },
-  warningBtn: { backgroundColor: '#f59e0b', paddingHorizontal: 16, paddingVertical: 8, justifyContent: 'center', borderRadius: 4 },
-  dangerBtn: { backgroundColor: '#ef4444', paddingHorizontal: 12, paddingVertical: 8, justifyContent: 'center', borderRadius: 4 },
+  actionBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  actionBtnText: { color: '#0F172A', fontWeight: '500', fontSize: 13 },
+  successBtn: { backgroundColor: '#22C55E', paddingHorizontal: 12, paddingVertical: 8, justifyContent: 'center', borderRadius: 6 },
+  warningBtn: { backgroundColor: '#F59E0B', paddingHorizontal: 12, paddingVertical: 8, justifyContent: 'center', borderRadius: 6 },
+  dangerBtn: { backgroundColor: '#EF4444', paddingHorizontal: 12, paddingVertical: 8, justifyContent: 'center', borderRadius: 6 },
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  cameraBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: 12, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, gap: 8 },
-  cameraBtnText: { color: '#0f172a', fontWeight: '600' },
-  thumbnail: { width: 44, height: 44, borderRadius: 4 },
-  primaryButtonSmall: { backgroundColor: '#0A74DA', paddingHorizontal: 16, paddingVertical: 8, justifyContent: 'center', borderRadius: 4 },
+  cameraBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', padding: 12, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0', gap: 8 },
+  cameraBtnText: { color: '#0F172A', fontWeight: '500', fontSize: 13 },
+  thumbnail: { width: 44, height: 44, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  primaryButtonSmall: { backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 8, justifyContent: 'center', borderRadius: 6 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFFFFF', padding: 24, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
-  modalTitle: { color: '#0f172a', fontSize: 18, fontWeight: '800', marginBottom: 8 },
-  shopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
-  shopBtn: { backgroundColor: '#f8fafc', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 4, borderWidth: 1, borderColor: '#cbd5e1', width: '48%', alignItems: 'center' },
-  shopBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 14 },
-  cancelBtn: { backgroundColor: '#f1f5f9', padding: 16, borderRadius: 4, alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1' },
-  cancelBtnText: { color: '#0f172a', fontWeight: '700' },
+  modalTitle: { color: '#0F172A', fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  shopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  shopBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 6, width: '48%', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  shopBtnText: { color: '#0F172A', fontWeight: '600', fontSize: 13 },
+  cancelBtn: { backgroundColor: '#FFFFFF', padding: 12, borderRadius: 6, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  cancelBtnText: { color: '#0F172A', fontWeight: '600', fontSize: 13 },
 });

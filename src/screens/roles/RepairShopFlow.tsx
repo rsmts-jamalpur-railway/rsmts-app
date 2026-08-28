@@ -10,6 +10,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Header from '../../components/Header';
 import { queuePhotosForUpload } from '../../services/api/PhotoUploader';
 import { useAuth } from '../../context/AuthContext';
+import { useLocations } from '../../hooks/useLocations';
+import { useAssetConfig } from '../../hooks/useAssetConfig';
 
 const requestCameraPermission = async () => {
   if (Platform.OS === 'android') {
@@ -118,6 +120,10 @@ function RepairShopFlowBase({ database }: any) {
   const [photoUris, setPhotoUris] = useState<string[]>([]);
 
   const { userId } = useAuth();
+  const { locations } = useLocations({ is_parking_line: false });
+  const { locations: qaLocations } = useLocations({ zone: 'QA' });
+  const qaLocation = qaLocations.length > 0 ? qaLocations[0].location_id : 'QA-LINE';
+  const { config } = useAssetConfig();
 
   const takePhoto = async () => {
     const hasPermission = await requestCameraPermission();
@@ -323,7 +329,7 @@ function RepairShopFlowBase({ database }: any) {
             
             <Text style={styles.label}>Repair Category</Text>
             <View style={styles.categoryRow}>
-              {['Light', 'Medium', 'Heavy'].map((cat) => (
+              {config.repairCategories.map((cat) => (
                 <TouchableOpacity 
                   key={cat} 
                   style={[styles.catBtn, selectedCategory === cat && styles.activeCatBtn]}
@@ -396,19 +402,31 @@ function RepairShopFlowBase({ database }: any) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Finish & Route: {selectedAsset?.asset_number}</Text>
             
-            <Text style={styles.label}>Forward to Another Shop</Text>
-            <View style={styles.shopGrid}>
-              {['WRS-1', 'WRS-2', 'WRS-3', 'WRS-4'].map(shop => (
-                <TouchableOpacity key={shop} style={styles.shopBtn} onPress={() => executeFinish(shop, false)}>
-                  <Text style={styles.shopBtnText}>{shop}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            
+            {selectedAsset?.asset_category === 'WAGON' || !selectedAsset?.asset_category ? (
+              <>
+                <Text style={styles.label}>Forward to Another Shop</Text>
+                <View style={styles.shopGrid}>
+                  {locations.filter(s => s.location_id !== selectedAsset?.allocated_shop).map(shop => (
+                    <TouchableOpacity key={shop.location_id} style={styles.shopBtn} onPress={() => executeFinish(shop.location_id, false)}>
+                      <Text style={styles.shopBtnText}>{shop.location_id}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-            <Text style={styles.label}>Or Complete Repair</Text>
-            <TouchableOpacity style={styles.qaBtn} onPress={() => executeFinish('WRS-5', true)}>
-              <Text style={styles.buttonText}>SEND TO WRS-5 (QA TESTING)</Text>
-            </TouchableOpacity>
+                <Text style={styles.label}>Or Complete Repair</Text>
+                <TouchableOpacity style={styles.qaBtn} onPress={() => executeFinish(qaLocation, true)}>
+                  <Text style={styles.buttonText}>SEND TO {qaLocation} (QA TESTING)</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Complete Repair</Text>
+                <TouchableOpacity style={styles.qaBtn} onPress={() => executeFinish(selectedAsset.allocated_shop || 'Unknown', true)}>
+                  <Text style={styles.buttonText}>MARK FOR QA TESTING</Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             <TouchableOpacity style={[styles.actionBtn, { marginTop: 20 }]} onPress={() => setFinishModal(false)}>
               <Text style={styles.actionBtnText}>CANCEL</Text>
@@ -423,41 +441,41 @@ function RepairShopFlowBase({ database }: any) {
 export default withDatabase(RepairShopFlowBase);
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   content: { padding: 16 },
-  card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16 },
-  cardTitle: { color: '#0f172a', fontSize: 15, fontWeight: '700', marginBottom: 16 },
-  subtitle: { color: '#64748b', marginBottom: 16 },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
-  itemTitle: { color: '#0f172a', fontSize: 14, fontWeight: '700' },
-  itemSub: { color: '#64748b', fontSize: 10, marginTop: 4 },
+  card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  cardTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700', marginBottom: 16 },
+  subtitle: { color: '#64748B', marginBottom: 16, fontSize: 13 },
+  itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
+  itemTitle: { color: '#0F172A', fontSize: 14, fontWeight: '600' },
+  itemSub: { color: '#64748B', fontSize: 12, marginTop: 4 },
   buttonRow: { flexDirection: 'row', gap: 8 },
-  actionBtn: { backgroundColor: '#f1f5f9', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1' },
-  actionBtnText: { color: '#0f172a', fontWeight: '600' },
-  primaryBtn: { backgroundColor: '#f59e0b', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, alignItems: 'center' },
-  successBtn: { backgroundColor: '#10b981', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, alignItems: 'center' },
-  warningBtn: { backgroundColor: '#eab308', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, alignItems: 'center' },
-  dangerBtn: { backgroundColor: '#ef4444', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, alignItems: 'center' },
-  buttonText: { color: '#FFFFFF', fontWeight: '800' },
+  actionBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  actionBtnText: { color: '#0F172A', fontWeight: '500', fontSize: 13 },
+  primaryBtn: { backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, alignItems: 'center' },
+  successBtn: { backgroundColor: '#22C55E', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, alignItems: 'center' },
+  warningBtn: { backgroundColor: '#F59E0B', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, alignItems: 'center' },
+  dangerBtn: { backgroundColor: '#EF4444', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, alignItems: 'center' },
+  buttonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 13 },
   
   // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', padding: 24, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  modalTitle: { color: '#0f172a', fontSize: 18, fontWeight: '800', marginBottom: 20 },
-  label: { color: '#64748b', fontSize: 10, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  categoryRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  catBtn: { flex: 1, padding: 12, borderRadius: 4, borderWidth: 1, borderColor: '#cbd5e1', alignItems: 'center' },
-  activeCatBtn: { backgroundColor: '#f59e0b', borderColor: '#f59e0b' },
-  catBtnText: { color: '#64748b', fontWeight: '600' },
+  modalContent: { backgroundColor: '#FFFFFF', padding: 24, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+  modalTitle: { color: '#0F172A', fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  label: { color: '#64748B', fontSize: 11, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  categoryRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  catBtn: { flex: 1, padding: 10, borderRadius: 6, backgroundColor: '#FFFFFF', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  activeCatBtn: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+  catBtnText: { color: '#0F172A', fontWeight: '500', fontSize: 13 },
   activeCatBtnText: { color: '#FFFFFF' },
-  input: { backgroundColor: '#f8fafc', color: '#0f172a', padding: 16, borderRadius: 4, borderWidth: 1, borderColor: '#cbd5e1', marginBottom: 16 },
+  input: { backgroundColor: '#FFFFFF', color: '#0F172A', padding: 12, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, fontSize: 13 },
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  cameraBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: 12, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, gap: 8 },
-  cameraBtnText: { color: '#0f172a', fontWeight: '600' },
-  thumbnail: { width: 44, height: 44, borderRadius: 4 },
+  cameraBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', padding: 12, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0', gap: 8 },
+  cameraBtnText: { color: '#0F172A', fontWeight: '500', fontSize: 13 },
+  thumbnail: { width: 44, height: 44, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' },
   
-  shopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
-  shopBtn: { backgroundColor: '#f8fafc', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 4, borderWidth: 1, borderColor: '#cbd5e1', width: '48%', alignItems: 'center' },
-  shopBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 14 },
-  qaBtn: { backgroundColor: '#10b981', padding: 16, borderRadius: 4, alignItems: 'center' },
+  shopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  shopBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 6, width: '48%', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  shopBtnText: { color: '#0F172A', fontWeight: '600', fontSize: 13 },
+  qaBtn: { backgroundColor: '#22C55E', padding: 12, borderRadius: 6, alignItems: 'center' },
 });

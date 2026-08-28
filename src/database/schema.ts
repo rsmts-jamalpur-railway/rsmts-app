@@ -1,12 +1,13 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 2,
+  version: 4,
   tables: [
     tableSchema({
       name: 'assets',
       columns: [
         { name: 'asset_number', type: 'string', isIndexed: true },
+        { name: 'asset_category', type: 'string', isOptional: true },
         { name: 'asset_type', type: 'string' },
         { name: 'current_status', type: 'string' },
         { name: 'current_location', type: 'string', isOptional: true },
@@ -14,6 +15,14 @@ export default appSchema({
         { name: 'allocated_shop', type: 'string', isOptional: true },
         { name: 'repair_category', type: 'string', isOptional: true },
         { name: 'wagon_sr', type: 'string', isOptional: true },
+        { name: 'rly', type: 'string', isOptional: true },
+        { name: 'mod', type: 'string', isOptional: true },
+        { name: 'action', type: 'string', isOptional: true },
+        { name: 'loco_type', type: 'string', isOptional: true },
+        { name: 'crane_age_tag', type: 'string', isOptional: true },
+        { name: 'tc_variant', type: 'string', isOptional: true },
+        { name: 'tc_zone', type: 'string', isOptional: true },
+        { name: 'custom_fields', type: 'string', isOptional: true },
         { name: 'built_year', type: 'number', isOptional: true },
         { name: 'is_active', type: 'boolean' },
         { name: 'nsy_in_date', type: 'number', isOptional: true },
@@ -37,6 +46,24 @@ export default appSchema({
         { name: 'repair_cycle_id', type: 'string', isOptional: true },
         { name: 'is_offline_entry', type: 'boolean' },
         { name: 'timestamp', type: 'number' },
+      ],
+    }),
+    tableSchema({
+      name: 'locations',
+      columns: [
+        { name: 'location_id', type: 'string', isIndexed: true },
+        { name: 'max_capacity', type: 'number' },
+        { name: 'standard_tat_hours', type: 'number' },
+        { name: 'zone', type: 'string', isOptional: true },
+        { name: 'is_parking_line', type: 'boolean' },
+      ],
+    }),
+    tableSchema({
+      name: 'settings',
+      columns: [
+        { name: 'key', type: 'string', isIndexed: true },
+        { name: 'value', type: 'string' },
+        { name: 'description', type: 'string', isOptional: true },
       ],
     }),
   ],

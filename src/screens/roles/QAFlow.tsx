@@ -10,6 +10,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Header from '../../components/Header';
 import { queuePhotosForUpload } from '../../services/api/PhotoUploader';
 import { useAuth } from '../../context/AuthContext';
+import { useLocations } from '../../hooks/useLocations';
 
 const Tab = createBottomTabNavigator();
 
@@ -94,6 +95,9 @@ function QAFlowBase({ database }: any) {
   const [pendingVerdict, setPendingVerdict] = useState<string | null>(null);
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [selectedShop, setSelectedShop] = useState<string>('WRS-1');
+  const { locations } = useLocations({ is_parking_line: false });
+  const { locations: qaLocations } = useLocations({ zone: 'QA' });
+  const qaLocation = qaLocations.length > 0 ? qaLocations[0].location_id : 'QA-LINE';
 
   const takePhoto = async () => {
     const hasPermission = await requestCameraPermission();
@@ -146,7 +150,7 @@ function QAFlowBase({ database }: any) {
 
         await database.collections.get('movement_logs').create((log: any) => {
           log.asset_number = asset.asset_number;
-          log.from_location = 'WRS-5';
+          log.from_location = qaLocation;
           log.to_location = verdict === 'Fit' ? 'NSY' : (verdict === 'Condemned' ? 'Condemned Yard' : targetShop);
           log.previous_status = 'Pending QA';
           log.new_status = finalStatus;
@@ -245,13 +249,13 @@ function QAFlowBase({ database }: any) {
               <>
                 <Text style={styles.label}>Redirect to Shop</Text>
                 <View style={styles.shopGrid}>
-                  {['WRS-1', 'WRS-2', 'WRS-3', 'WRS-4'].map(shop => (
+                  {locations.filter(s => s.location_id !== qaLocation).map(shop => (
                     <TouchableOpacity 
-                      key={shop} 
-                      style={[styles.shopBtn, selectedShop === shop && styles.activeShopBtn]} 
-                      onPress={() => setSelectedShop(shop)}
+                      key={shop.location_id} 
+                      style={[styles.shopBtn, selectedShop === shop.location_id && styles.activeShopBtn]} 
+                      onPress={() => setSelectedShop(shop.location_id)}
                     >
-                      <Text style={[styles.shopBtnText, selectedShop === shop && styles.activeShopBtnText]}>{shop}</Text>
+                      <Text style={[styles.shopBtnText, selectedShop === shop.location_id && styles.activeShopBtnText]}>{shop.location_id}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -276,45 +280,45 @@ function QAFlowBase({ database }: any) {
 export default withDatabase(QAFlowBase);
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   content: { padding: 16 },
-  card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16 },
-  cardTitle: { color: '#0f172a', fontSize: 15, fontWeight: '700', marginBottom: 16 },
-  subtitle: { color: '#64748b', marginBottom: 16 },
+  card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  cardTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700', marginBottom: 16 },
+  subtitle: { color: '#64748B', marginBottom: 16, fontSize: 13 },
   
-  itemCard: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 16 }, // Removed border, changed to white
+  itemCard: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }, 
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  itemTitle: { color: '#0f172a', fontSize: 15, fontWeight: '800' },
-  itemBadge: { color: '#64748b', fontSize: 10, backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, overflow: 'hidden' }, // Light gray badge background is ok
-  itemSub: { color: '#64748b', fontSize: 12, marginBottom: 24 },
+  itemTitle: { color: '#0F172A', fontSize: 14, fontWeight: '600' },
+  itemBadge: { color: '#64748B', fontSize: 10, backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, overflow: 'hidden' }, 
+  itemSub: { color: '#64748B', fontSize: 12, marginBottom: 24 },
   
-  label: { color: '#475569', fontSize: 10, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label: { color: '#64748B', fontSize: 11, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   verdictGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   
-  successBtn: { flex: 1, minWidth: '45%', backgroundColor: '#10b981', padding: 16, borderRadius: 4, alignItems: 'center' },
-  warningBtn: { flex: 1, minWidth: '45%', backgroundColor: '#f59e0b', padding: 16, borderRadius: 4, alignItems: 'center' },
-  dangerBtn: { flex: 1, minWidth: '45%', backgroundColor: '#ef4444', padding: 16, borderRadius: 4, alignItems: 'center' },
-  condemnedBtn: { flex: 1, minWidth: '45%', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 4, alignItems: 'center', borderWidth: 1, borderColor: '#ef4444' }, 
+  successBtn: { flex: 1, minWidth: '45%', backgroundColor: '#22C55E', padding: 12, borderRadius: 6, alignItems: 'center' },
+  warningBtn: { flex: 1, minWidth: '45%', backgroundColor: '#F59E0B', padding: 12, borderRadius: 6, alignItems: 'center' },
+  dangerBtn: { flex: 1, minWidth: '45%', backgroundColor: '#EF4444', padding: 12, borderRadius: 6, alignItems: 'center' },
+  condemnedBtn: { flex: 1, minWidth: '45%', backgroundColor: '#FFFFFF', padding: 12, borderRadius: 6, alignItems: 'center', borderWidth: 1, borderColor: '#EF4444' }, 
   
-  btnIcon: { fontSize: 20, marginBottom: 8 },
-  btnText: { color: '#fff', fontWeight: '800', letterSpacing: 1 },
+  btnIcon: { fontSize: 20, marginBottom: 4 },
+  btnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 12 },
 
   // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', padding: 24, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  modalTitle: { color: '#0f172a', fontSize: 18, fontWeight: '800', marginBottom: 8 },
+  modalContent: { backgroundColor: '#FFFFFF', padding: 24, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+  modalTitle: { color: '#0F172A', fontSize: 18, fontWeight: '700', marginBottom: 16 },
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  cameraBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: 12, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, gap: 8 },
-  cameraBtnText: { color: '#0f172a', fontWeight: '600' },
-  thumbnail: { width: 44, height: 44, borderRadius: 4 },
-  actionBtn: { backgroundColor: '#f1f5f9', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1' },
-  actionBtnText: { color: '#0f172a', fontWeight: '600' },
-  primaryBtn: { backgroundColor: '#f59e0b', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { color: '#FFFFFF', fontWeight: '800' },
+  cameraBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', padding: 12, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0', gap: 8 },
+  cameraBtnText: { color: '#0F172A', fontWeight: '500', fontSize: 13 },
+  thumbnail: { width: 44, height: 44, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  actionBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  actionBtnText: { color: '#0F172A', fontWeight: '600', fontSize: 13 },
+  primaryBtn: { backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 13 },
   
-  shopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
-  shopBtn: { backgroundColor: '#f8fafc', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 4, borderWidth: 1, borderColor: '#cbd5e1', width: '48%', alignItems: 'center' },
-  activeShopBtn: { backgroundColor: '#0f172a', borderColor: '#0f172a' },
-  shopBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 14 },
+  shopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  shopBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 6, width: '48%', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  activeShopBtn: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
+  shopBtnText: { color: '#0F172A', fontWeight: '600', fontSize: 13 },
   activeShopBtnText: { color: '#FFFFFF' },
 });

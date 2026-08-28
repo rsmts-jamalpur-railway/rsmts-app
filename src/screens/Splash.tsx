@@ -56,7 +56,7 @@ export default function Splash({ onFinish }: SplashProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F9FAFB',
     },
     logoContainer: {
         flex: 1,
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
         width: 14,
         height: 14,
         borderRadius: 7,
-        backgroundColor: '#0A74DA', // A premium, professional blue color
+        backgroundColor: '#0F172A',
         marginHorizontal: 8,
     },
 });

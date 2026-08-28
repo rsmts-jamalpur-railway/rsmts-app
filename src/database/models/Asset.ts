@@ -5,6 +5,7 @@ export default class Asset extends Model {
   static table = 'assets';
 
   @field('asset_number') asset_number!: string;
+  @field('asset_category') asset_category?: string;
   @field('asset_type') asset_type!: string;
   @field('current_status') current_status!: string;
   @field('current_location') current_location?: string;
@@ -12,6 +13,14 @@ export default class Asset extends Model {
   @field('allocated_shop') allocated_shop?: string;
   @field('repair_category') repair_category?: string;
   @field('wagon_sr') wagon_sr?: string;
+  @field('rly') rly?: string;
+  @field('mod') mod?: string;
+  @field('action') action?: string;
+  @field('loco_type') loco_type?: string;
+  @field('crane_age_tag') crane_age_tag?: string;
+  @field('tc_variant') tc_variant?: string;
+  @field('tc_zone') tc_zone?: string;
+  @field('custom_fields') custom_fields?: string;
   @field('built_year') built_year?: number;
   @field('is_active') is_active!: boolean;
   

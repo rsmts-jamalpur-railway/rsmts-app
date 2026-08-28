@@ -9,6 +9,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Header from '../../components/Header';
 import SearchWagon from '../common/SearchWagon';
 import { useAuth } from '../../context/AuthContext';
+import { useLocations } from '../../hooks/useLocations';
 
 const Tab = createBottomTabNavigator();
 
@@ -65,10 +66,80 @@ function AdminExceptionsScreen({ database, handleResolve }: any) {
   );
 }
 
+const TimelineList = ({ logs }: { logs: any[] }) => {
+  if (logs.length === 0) {
+    return <Text style={styles.subtitle}>No movement history found.</Text>;
+  }
+  return (
+    <ScrollView style={{ maxHeight: 400 }}>
+      {logs.map((log, index) => (
+        <View key={log.id} style={{ flexDirection: 'row', marginBottom: 16 }}>
+          <View style={{ width: 2, backgroundColor: '#E2E8F0', marginRight: 16, alignItems: 'center' }}>
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#3B82F6', marginTop: 4, transform: [{ translateX: -5 }] }} />
+          </View>
+          <View style={{ flex: 1, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
+            <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 4 }}>{new Date(log.timestamp).toLocaleString()}</Text>
+            <Text style={{ fontSize: 14, color: '#0F172A', fontWeight: '600' }}>{log.previous_status || 'Start'} ➜ {log.new_status}</Text>
+            <Text style={{ fontSize: 13, color: '#334155', marginTop: 4 }}>{log.from_location || 'Unknown'} ➜ {log.to_location}</Text>
+            {log.remarks && <Text style={{ fontSize: 12, color: '#64748B', marginTop: 8, fontStyle: 'italic' }}>"{log.remarks}"</Text>}
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+};
+
+const ObservableTimelineList = withObservables(['assetNumber', 'database'], ({ assetNumber, database }) => ({
+  logs: database.collections.get('movement_logs').query(
+    Q.where('asset_number', assetNumber),
+    Q.sortBy('timestamp', Q.desc)
+  ).observe()
+}))(TimelineList);
+
+const AllAssetsList = ({ assets, openTimeline }: { assets: Asset[], openTimeline: (asset: Asset) => void }) => (
+  <View style={styles.resultsContainer}>
+    {assets.map(asset => (
+      <TouchableOpacity key={asset.id} style={styles.resultCard} onPress={() => openTimeline(asset)}>
+        <View style={styles.resultHeader}>
+          <Text style={styles.resultTitle}>{asset.asset_number}</Text>
+          <View style={[styles.badge, asset.is_active ? styles.badgeActive : styles.badgeInactive]}>
+            <Text style={styles.badgeText}>{asset.is_active ? 'ACTIVE' : 'DISPATCHED'}</Text>
+          </View>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Location:</Text>
+          <Text style={styles.detailValue}>{asset.current_location}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Status:</Text>
+          <Text style={styles.detailValue}>{asset.current_status}</Text>
+        </View>
+        <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 8, textAlign: 'right' }}>Tap to view timeline</Text>
+      </TouchableOpacity>
+    ))}
+    {assets.length === 0 && <Text style={styles.subtitle}>No assets found in system.</Text>}
+  </View>
+);
+
+const ObservableAllAssets = withObservables(['database'], ({ database }) => ({
+  assets: database.collections.get('assets').query(Q.sortBy('updatedAt', Q.desc)).observe(),
+}))(AllAssetsList);
+
+function AdminAllAssetsScreen({ database, openTimeline }: any) {
+  return (
+    <ScrollView contentContainerStyle={styles.content} style={styles.container}>
+      <Text style={styles.cardTitle}>Global Asset Directory</Text>
+      <ObservableAllAssets database={database} openTimeline={openTimeline} />
+    </ScrollView>
+  );
+}
+
 function AdminGodModeBase({ database }: any) {
   const { userId } = useAuth();
   const [routeModal, setRouteModal] = useState(false);
+  const [timelineModal, setTimelineModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const { locations } = useLocations({ is_parking_line: false });
 
   const handleResolveAction = (asset: Asset, action: string) => {
     if (action === 'Re-route') {
@@ -77,6 +148,11 @@ function AdminGodModeBase({ database }: any) {
     } else {
       executeResolution(asset, action, null);
     }
+  };
+
+  const openTimeline = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setTimelineModal(true);
   };
 
   const executeResolution = async (asset: Asset, action: string, targetShop: string | null) => {
@@ -125,6 +201,7 @@ function AdminGodModeBase({ database }: any) {
         tabBarIcon: ({ color, size }) => {
           let iconName = 'shield-account';
           if (route.name === 'Exceptions') iconName = 'alert-octagon';
+          else if (route.name === 'All Assets') iconName = 'view-list';
           else if (route.name === 'Search') iconName = 'magnify';
           return <Icon name={iconName} size={size} color={color} />;
         },
@@ -150,6 +227,9 @@ function AdminGodModeBase({ database }: any) {
       <Tab.Screen name="Exceptions">
         {() => <AdminExceptionsScreen database={database} handleResolve={handleResolveAction} />}
       </Tab.Screen>
+      <Tab.Screen name="All Assets">
+        {() => <AdminAllAssetsScreen database={database} openTimeline={openTimeline} />}
+      </Tab.Screen>
       <Tab.Screen name="Search">
         {() => <SearchWagon database={database} />}
       </Tab.Screen>
@@ -162,17 +242,31 @@ function AdminGodModeBase({ database }: any) {
             <Text style={styles.subtitle}>Select the NEW destination repair shop for this missing wagon:</Text>
             
             <View style={styles.shopGrid}>
-              {['WRS-1', 'WRS-2', 'WRS-3', 'WRS-4', 'WRS-5'].map(shop => (
-                <TouchableOpacity key={shop} style={styles.shopBtn} onPress={() => {
-                  if (selectedAsset) executeResolution(selectedAsset, 'Re-route', shop);
+              {locations.map(shop => (
+                <TouchableOpacity key={shop.location_id} style={styles.shopBtn} onPress={() => {
+                  if (selectedAsset) executeResolution(selectedAsset, 'Re-route', shop.location_id);
                 }}>
-                  <Text style={styles.shopBtnText}>{shop}</Text>
+                  <Text style={styles.shopBtnText}>{shop.location_id}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setRouteModal(false)}>
               <Text style={styles.cancelBtnText}>CANCEL</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={timelineModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Timeline: {selectedAsset?.asset_number}</Text>
+            {selectedAsset ? (
+              <ObservableTimelineList database={database} assetNumber={selectedAsset.asset_number} />
+            ) : null}
+            <TouchableOpacity style={[styles.cancelBtn, { marginTop: 16 }]} onPress={() => setTimelineModal(false)}>
+              <Text style={styles.cancelBtnText}>CLOSE</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -184,39 +278,49 @@ function AdminGodModeBase({ database }: any) {
 export default withDatabase(AdminGodModeBase);
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { padding: 20, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, // removed borderBottomWidth
-  headerTitle: { color: '#ef4444', fontSize: 16, fontWeight: '900', letterSpacing: 1 }, // Red color for Admin God Mode
-  badge: { backgroundColor: '#ef4444', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 16 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  header: { padding: 16, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }, 
+  headerTitle: { color: '#EF4444', fontSize: 16, fontWeight: '700', letterSpacing: 1 }, 
+  badge: { backgroundColor: '#EF4444', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6 },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '600' },
   
   content: { padding: 16 },
-  card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16 }, // removed borders
-  cardTitle: { color: '#0f172a', fontSize: 15, fontWeight: '700', marginBottom: 16 },
-  subtitle: { color: '#64748b', marginBottom: 16 },
+  card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }, 
+  cardTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700', marginBottom: 16 },
+  subtitle: { color: '#64748B', marginBottom: 16, fontSize: 13 },
   
-  exceptionCard: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 16 }, // removed border, changed background to white
+  exceptionCard: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }, 
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  itemTitle: { color: '#0f172a', fontSize: 15, fontWeight: '800' },
+  itemTitle: { color: '#0F172A', fontSize: 14, fontWeight: '600' },
   
-  statusBadgeDanger: { color: '#ef4444', fontSize: 10, fontWeight: '800', backgroundColor: '#fee2e2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, overflow: 'hidden' },
-  statusBadgeWarning: { color: '#f59e0b', fontSize: 10, fontWeight: '800', backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, overflow: 'hidden' },
+  statusBadgeDanger: { color: '#EF4444', fontSize: 10, fontWeight: '600', backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, overflow: 'hidden' },
+  statusBadgeWarning: { color: '#F59E0B', fontSize: 10, fontWeight: '600', backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, overflow: 'hidden' },
   
-  itemSub: { color: '#64748b', fontSize: 12, marginBottom: 8 },
+  itemSub: { color: '#64748B', fontSize: 12, marginBottom: 8 },
   
-  buttonRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  primaryBtn: { flex: 1, backgroundColor: '#3b82f6', padding: 12, borderRadius: 4, alignItems: 'center' },
-  successBtn: { flex: 1, backgroundColor: '#10b981', padding: 12, borderRadius: 4, alignItems: 'center' },
-  dangerBtn: { flex: 1, backgroundColor: '#ef4444', padding: 12, borderRadius: 4, alignItems: 'center' },
+  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  primaryBtn: { flex: 1, backgroundColor: '#0F172A', padding: 12, borderRadius: 6, alignItems: 'center' },
+  successBtn: { flex: 1, backgroundColor: '#22C55E', padding: 12, borderRadius: 6, alignItems: 'center' },
+  dangerBtn: { flex: 1, backgroundColor: '#EF4444', padding: 12, borderRadius: 6, alignItems: 'center' },
   
-  btnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  btnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFFFFF', padding: 24, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
-  modalTitle: { color: '#0f172a', fontSize: 18, fontWeight: '800', marginBottom: 8 },
-  shopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
-  shopBtn: { backgroundColor: '#f8fafc', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 4, borderWidth: 1, borderColor: '#cbd5e1', width: '48%', alignItems: 'center' },
-  shopBtnText: { color: '#0f172a', fontWeight: '700', fontSize: 14 },
-  cancelBtn: { backgroundColor: '#f1f5f9', padding: 16, borderRadius: 4, alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1' },
-  cancelBtnText: { color: '#0f172a', fontWeight: '700' },
+  modalTitle: { color: '#0F172A', fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  shopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  shopBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 6, width: '48%', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  shopBtnText: { color: '#0F172A', fontWeight: '600', fontSize: 13 },
+  cancelBtn: { backgroundColor: '#FFFFFF', padding: 12, borderRadius: 6, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  cancelBtnText: { color: '#0F172A', fontWeight: '600', fontSize: 13 },
+  
+  resultsContainer: { gap: 12 },
+  resultCard: { backgroundColor: '#f8fafc', padding: 16, borderRadius: 4, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 12 },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  resultTitle: { color: '#0f172a', fontSize: 16, fontWeight: '800' },
+  badgeActive: { backgroundColor: '#dcfce7' },
+  badgeInactive: { backgroundColor: '#f1f5f9' },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  detailLabel: { color: '#64748b', fontSize: 12 },
+  detailValue: { color: '#0f172a', fontSize: 12, fontWeight: '600' },
 });

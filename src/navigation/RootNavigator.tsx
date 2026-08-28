@@ -10,6 +10,7 @@ import YardMasterFlow from '../screens/roles/YardMasterFlow';
 import RepairShopFlow from '../screens/roles/RepairShopFlow';
 import QAFlow from '../screens/roles/QAFlow';
 import AdminGodMode from '../screens/roles/AdminGodMode';
+import SearchWagon from '../screens/common/SearchWagon';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,9 +29,10 @@ export default function RootNavigator() {
         ) : (
           <>
             {role === 'SSE_TPT_Rail' && <Stack.Screen name="Yard" component={YardMasterFlow} />}
-            {role === 'Shop_Incharge' && <Stack.Screen name="Shop" component={RepairShopFlow} />}
+            {(role === 'Shop_Incharge' || role === 'GIF_Shop' || role === 'Crane_Shop') && <Stack.Screen name="Shop" component={RepairShopFlow} />}
             {role === 'WRS_5_Staff' && <Stack.Screen name="QA" component={QAFlow} />}
             {(role === 'Administrator' || role === 'Management') && <Stack.Screen name="Admin" component={AdminGodMode} />}
+            {role === 'Viewer' && <Stack.Screen name="ViewerDashboard" component={SearchWagon} />}
           </>
         )}
       </Stack.Navigator>

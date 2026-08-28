@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import api from '../../services/api/axios';
 import { useAuth } from '../../context/AuthContext';
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  const [employeeId, setEmployeeId] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!employeeId || !password) {
-      setError('Please enter Employee ID and Password');
+    if (!email || !password) {
+      setError('Please enter Email Address and Password');
       return;
     }
 
@@ -21,7 +24,7 @@ export default function LoginScreen() {
 
     try {
       const response = await api.post('/auth/login', {
-        employee_id: employeeId,
+        email: email,
         password: password,
       });
 
@@ -33,10 +36,12 @@ export default function LoginScreen() {
       await login(role, token, userId);
     } catch (err: any) {
       console.error('Login Error:', err);
-      if (err.response && err.response.data && err.response.data.message) {
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
-        setError('Invalid Employee Credentials or Server Offline');
+        setError('Invalid Email Credentials or Server Offline');
       }
     } finally {
       setLoading(false);
@@ -45,42 +50,58 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>RSMTS</Text>
+          <Text style={styles.title}>Login to your</Text>
+          <Text style={styles.title}>account</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Operator Login</Text>
-
+        <View style={styles.formContainer}>
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Employee ID</Text>
+            <Icon name="email-outline" size={20} color="#A0AEC0" style={styles.icon} />
             <TextInput
               style={styles.input}
-              placeholder="e.g. SHOP001"
-              placeholderTextColor="#94a3b8"
-              value={employeeId}
-              onChangeText={setEmployeeId}
-              autoCapitalize="characters"
+              placeholder="Enter your mail"
+              placeholderTextColor="#A0AEC0"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Icon name="lock-outline" size={20} color="#A0AEC0" style={styles.icon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your password"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor="#A0AEC0"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Icon name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#A0AEC0" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.optionsRow}>
+            <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                {rememberMe && <Icon name="check" size={12} color="#FFFFFF" />}
+              </View>
+              <Text style={styles.checkboxLabel}>Remember me</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity>
+              <Text style={styles.forgotLink}>Forgot password</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -91,11 +112,20 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>AUTHENTICATE</Text>
+              <Text style={styles.loginButtonText}>Sign in</Text>
             )}
           </TouchableOpacity>
         </View>
-      </View>
+
+        {/* This flex spacer pushes the contact text to the very bottom of the screen */}
+        <View style={{ flex: 1 }} />
+
+        <View style={{ alignItems: 'center', paddingTop: 32 }}>
+          <Text style={{ fontSize: 12, color: '#718096' }}>
+            Don't have an account? <Text style={{ color: '#38B2AC', fontWeight: '500' }}>Contact administrator</Text>
+          </Text>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -106,70 +136,95 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
+    flexGrow: 1,
+    justifyContent: 'flex-start',
+    paddingTop: '25%',
+    paddingHorizontal: 32,
+    paddingBottom: 32,
   },
   header: {
-    alignItems: 'center',
     marginBottom: 48,
   },
   title: {
-    fontSize: 40,
-    fontWeight: '900',
-    color: '#0A74DA', // Premium blue
-    letterSpacing: 2,
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#1A202C',
+    lineHeight: 40,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    padding: 32,
-    // Removed border per user request
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 24,
-    textAlign: 'center',
+  formContainer: {
+    width: '100%',
   },
   inputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 9999,
+    paddingHorizontal: 16,
+    height: 56,
     marginBottom: 20,
   },
-  label: {
-    color: '#475569',
-    fontSize: 10,
-    fontWeight: '600',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  icon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: '#f8fafc',
+    flex: 1,
+    color: '#1A202C',
+    fontSize: 15,
+    height: '100%',
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 4,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    padding: 16,
-    color: '#0f172a',
+    borderColor: '#E2E8F0',
+    borderRadius: 6,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    backgroundColor: '#38B2AC',
+    borderColor: '#38B2AC',
+  },
+  checkboxLabel: {
+    color: '#718096',
+    fontSize: 14,
+  },
+  forgotLink: {
+    color: '#38B2AC',
     fontSize: 14,
     fontWeight: '500',
   },
   loginButton: {
-    backgroundColor: '#0A74DA',
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: '#38B2AC',
+    height: 56,
+    borderRadius: 9999,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
   },
   loginButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontSize: 16,
+    fontWeight: '600',
   },
   errorText: {
-    color: '#ef4444',
+    color: '#E53E3E',
     textAlign: 'center',
     marginBottom: 16,
-    fontWeight: '600',
+    fontWeight: '500',
   }
 });

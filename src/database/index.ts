@@ -3,6 +3,8 @@ import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import schema from './schema';
 import Asset from './models/Asset';
 import MovementLog from './models/MovementLog';
+import Location from './models/Location';
+import Setting from './models/Setting';
 
 const adapter = new SQLiteAdapter({
   schema,
@@ -17,5 +19,7 @@ export const database = new Database({
   modelClasses: [
     Asset,
     MovementLog,
+    Location,
+    Setting,
   ],
 });

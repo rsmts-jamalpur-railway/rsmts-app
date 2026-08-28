@@ -12,7 +12,7 @@ const SearchResults = ({ assets, isAdmin, onOverride }: { assets: Asset[], isAdm
     return (
       <View style={styles.emptyContainer}>
         <Icon name="train-car" size={48} color="#cbd5e1" />
-        <Text style={styles.emptyText}>No wagons found.</Text>
+        <Text style={styles.emptyText}>No assets found.</Text>
       </View>
     );
   }
@@ -108,7 +108,7 @@ function SearchWagon({ database }: any) {
       setOverrideModal(false);
       setSelectedAsset(null);
       setOverrideStatus('');
-      Alert.alert('Success', 'Wagon status has been force updated.');
+      Alert.alert('Success', 'Asset status has been force updated.');
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }
@@ -118,11 +118,11 @@ function SearchWagon({ database }: any) {
     <>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.searchCard}>
-        <Text style={styles.cardTitle}>Track Wagon</Text>
+        <Text style={styles.cardTitle}>Track Asset</Text>
         <View style={styles.searchRow}>
           <TextInput 
             style={styles.searchInput}
-            placeholder="Enter Wagon Number..."
+            placeholder="Enter Asset Number..."
             placeholderTextColor="#94a3b8"
             value={query}
             onChangeText={setQuery}
@@ -138,7 +138,7 @@ function SearchWagon({ database }: any) {
         <ObservableSearchResults database={database} searchQuery={activeQuery} isAdmin={isAdmin} onOverride={openOverride} />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Enter a wagon number above to track its current location and status in the yard.</Text>
+          <Text style={styles.emptyText}>Enter an asset number above to track its current location and status in the yard.</Text>
         </View>
       )}
     </ScrollView>
