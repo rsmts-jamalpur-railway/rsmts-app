@@ -12,7 +12,14 @@ import QAFlow from '../screens/roles/QAFlow';
 import AdminGodMode from '../screens/roles/AdminGodMode';
 import SearchWagon from '../screens/common/SearchWagon';
 
+import SyncTestHarnessScreen, { SYNC_TEST_HARNESS_ENABLED } from '../screens/SyncTestHarnessScreen';
+
 const Stack = createNativeStackNavigator();
+
+// Placeholder Shell Imports
+import { View, Text } from 'react-native';
+
+import AppTabs from './AppTabs';
 
 export default function RootNavigator() {
   const { role, isLoading } = useAuth();
@@ -21,6 +28,7 @@ export default function RootNavigator() {
     return <Splash onFinish={() => {}} />;
   }
 
+  // The Role Resolver
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -28,11 +36,10 @@ export default function RootNavigator() {
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
           <>
-            {role === 'SSE_TPT_Rail' && <Stack.Screen name="Yard" component={YardMasterFlow} />}
-            {(role === 'Shop_Incharge' || role === 'GIF_Shop' || role === 'Crane_Shop') && <Stack.Screen name="Shop" component={RepairShopFlow} />}
-            {role === 'WRS_5_Staff' && <Stack.Screen name="QA" component={QAFlow} />}
-            {(role === 'Administrator' || role === 'Management') && <Stack.Screen name="Admin" component={AdminGodMode} />}
-            {role === 'Viewer' && <Stack.Screen name="ViewerDashboard" component={SearchWagon} />}
+            {__DEV__ && SYNC_TEST_HARNESS_ENABLED && <Stack.Screen name="SyncTestHarness" component={SyncTestHarnessScreen} />}
+            
+            {/* The primary tab navigator handles rendering the correct shell based on role */}
+            <Stack.Screen name="App" component={AppTabs} />
           </>
         )}
       </Stack.Navigator>

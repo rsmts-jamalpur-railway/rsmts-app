@@ -8,14 +8,13 @@ import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import withObservables from '@nozbe/with-observables';
 
 interface HeaderProps {
-  role: string;
   onSync?: () => void;
   logs?: any[];
 }
 
-function HeaderBase({ role, onSync, logs = [] }: HeaderProps) {
+function HeaderBase({ onSync, logs = [] }: HeaderProps) {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const { role, employeeId, assignedLocationId, logout } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
 
   const pendingChanges = logs.filter(log => log.syncStatus !== 'synced').length;
@@ -47,110 +46,110 @@ function HeaderBase({ role, onSync, logs = [] }: HeaderProps) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
-      <View style={styles.profileSection}>
-        <View style={styles.avatar}>
-          <Icon name="account" size={24} color="#0A74DA" />
-        </View>
-        <View>
-          <Text style={styles.greeting}>Welcome back,</Text>
-          <Text style={styles.roleText}>{role.toUpperCase()}</Text>
+      <View style={styles.topRow}>
+        <Text style={styles.brandText}>RSMTS</Text>
+        
+        <View style={styles.rightControls}>
+          <TouchableOpacity style={styles.syncContainer} onPress={handleSync} disabled={isSyncing}>
+            {isSyncing ? (
+              <ActivityIndicator size="small" color="#0A74DA" />
+            ) : (
+              <View style={[styles.statusDot, { backgroundColor: pendingChanges > 0 ? '#f59e0b' : '#22c55e' }]} />
+            )}
+            <Text style={styles.syncText}>
+              {isSyncing ? 'Syncing...' : (pendingChanges > 0 ? `${pendingChanges} Pending` : 'Synced')}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={handleLogout} style={{ marginLeft: 12 }}>
+            <Icon name="logout" size={24} color="#ef4444" />
+          </TouchableOpacity>
         </View>
       </View>
+
+      <Text style={styles.locationText}>{assignedLocationId || 'Unknown Location'}</Text>
       
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.iconBtn} onPress={handleSync} disabled={isSyncing}>
-          {isSyncing ? (
-            <ActivityIndicator size="small" color="#0A74DA" />
-          ) : (
-            <Icon name="sync" size={24} color={pendingChanges > 0 ? "#f59e0b" : "#64748b"} />
-          )}
-          {pendingChanges > 0 && !isSyncing && (
-            <View style={styles.syncBadge}>
-              <Text style={styles.syncBadgeText}>{pendingChanges}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Icon name="bell-outline" size={24} color="#64748b" />
-          <View style={styles.badge} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn} onPress={handleLogout} disabled={isSyncing}>
-          <Icon name="logout" size={24} color="#ef4444" />
-        </TouchableOpacity>
+      <View style={styles.divider} />
+
+      <View style={styles.userRow}>
+        <Text style={styles.roleText}>{role ? role.replace('_', ' ') : 'UNKNOWN ROLE'}</Text>
+        <Text style={styles.employeeText}>{employeeId || 'Unknown EMP'}</Text>
       </View>
     </View>
   );
 }
 
 const enhance = withObservables(['database'], ({ database }: any) => ({
-  logs: database.collections.get('movement_logs').query().observe(),
+  logs: database.collections.get('movement_logs').query().observe(), // We might need sync_operations later
 }));
 
 export default withDatabase(enhance(HeaderBase));
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    // Removed borderBottomWidth as requested
+    marginBottom: 4,
   },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  greeting: {
-    color: '#64748b',
-    fontSize: 10,
-  },
-  roleText: {
-    color: '#0f172a',
-    fontSize: 14,
+  brandText: {
+    fontSize: 18,
     fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: 0.5,
   },
-  actions: {
+  rightControls: {
     flexDirection: 'row',
-    gap: 16,
+    alignItems: 'center',
   },
-  iconBtn: {
-    padding: 4,
-    position: 'relative',
+  syncContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  badge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
+  statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ef4444',
+    marginRight: 6,
   },
-  syncBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#f59e0b',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
+  syncText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '600',
   },
-  syncBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
+  locationText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 12,
+  },
+  userRow: {
+    flexDirection: 'column',
+  },
+  roleText: {
+    fontSize: 14,
     fontWeight: '800',
+    color: '#0f172a',
+  },
+  employeeText: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
   }
 });

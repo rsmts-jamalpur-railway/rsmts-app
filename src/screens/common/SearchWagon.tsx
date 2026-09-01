@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert,
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import withObservables from '@nozbe/with-observables';
 import { Q } from '@nozbe/watermelondb';
-import Asset from '../../database/models/Asset';
+import Asset from '../../database/v2/models/Asset';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../context/AuthContext';
 
@@ -19,44 +19,45 @@ const SearchResults = ({ assets, isAdmin, onOverride }: { assets: Asset[], isAdm
 
   return (
     <View style={styles.resultsContainer}>
-      {assets.map(asset => (
-        <View key={asset.id} style={styles.resultCard}>
-          <View style={styles.resultHeader}>
-            <Text style={styles.resultTitle}>{asset.asset_number}</Text>
-            <View style={[styles.badge, asset.is_active ? styles.badgeActive : styles.badgeInactive]}>
-              <Text style={styles.badgeText}>{asset.is_active ? 'ACTIVE' : 'DISPATCHED'}</Text>
+      {assets.map(asset => {
+        const isActive = asset.currentStatus !== 'DISPATCHED';
+        return (
+          <View key={asset.id} style={styles.resultCard}>
+            <View style={styles.resultHeader}>
+              <Text style={styles.resultTitle}>{asset.assetNumber}</Text>
+              <View style={[styles.badge, isActive ? styles.badgeActive : styles.badgeInactive]}>
+                <Text style={styles.badgeText}>{isActive ? 'ACTIVE' : 'DISPATCHED'}</Text>
+              </View>
             </View>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Current Status:</Text>
-            <Text style={styles.detailValue}>{asset.current_status}</Text>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Allocated Shop:</Text>
-            <Text style={styles.detailValue}>{asset.allocated_shop || 'None'}</Text>
-          </View>
-          
-          {asset.repair_category && (
+            
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Repair Category:</Text>
-              <Text style={styles.detailValue}>{asset.repair_category}</Text>
+              <Text style={styles.detailLabel}>Current Status:</Text>
+              <Text style={styles.detailValue}>{asset.currentStatus}</Text>
             </View>
-          )}
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Current Location:</Text>
+              <Text style={styles.detailValue}>{asset.currentLocationId || 'None'}</Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Category:</Text>
+              <Text style={styles.detailValue}>{asset.assetCategory}</Text>
+            </View>
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Last Updated:</Text>
-            <Text style={styles.detailValue}>{new Date(asset.updatedAt).toLocaleString()}</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Last Updated:</Text>
+              <Text style={styles.detailValue}>{new Date(asset.updatedAt).toLocaleString()}</Text>
+            </View>
+
+            {isAdmin && (
+              <TouchableOpacity style={styles.overrideBtn} onPress={() => onOverride(asset)}>
+                <Text style={styles.overrideBtnText}>FORCE STATUS OVERRIDE</Text>
+              </TouchableOpacity>
+            )}
           </View>
-
-          {isAdmin && (
-            <TouchableOpacity style={styles.overrideBtn} onPress={() => onOverride(asset)}>
-              <Text style={styles.overrideBtnText}>FORCE STATUS OVERRIDE</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 };
@@ -66,8 +67,8 @@ const ObservableSearchResults = withObservables(['searchQuery', 'database'], ({ 
 }))(({ assets, isAdmin, onOverride }: any) => <SearchResults assets={assets} isAdmin={isAdmin} onOverride={onOverride} />);
 
 function SearchWagon({ database }: any) {
-  const { role, userId } = useAuth();
-  const isAdmin = role === 'Administrator' || role === 'Management';
+  const { role, employeeId } = useAuth();
+  const isAdmin = role === 'SYSTEM_ADMIN' || role === 'MANAGEMENT';
 
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
@@ -81,27 +82,24 @@ function SearchWagon({ database }: any) {
 
   const openOverride = (asset: Asset) => {
     setSelectedAsset(asset);
-    setOverrideStatus(asset.current_status);
+    setOverrideStatus(asset.currentStatus);
     setOverrideModal(true);
   };
 
   const submitOverride = async () => {
-    if (!overrideStatus.trim() || !selectedAsset || !userId) return;
+    if (!overrideStatus.trim() || !selectedAsset || !employeeId) return;
     try {
       await database.write(async () => {
         await selectedAsset.update((a: any) => {
-          a.current_status = overrideStatus;
+          a.currentStatus = overrideStatus;
         });
 
         await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = selectedAsset.asset_number;
-          log.from_location = selectedAsset.allocated_shop || 'Unknown';
-          log.to_location = 'Admin Override';
-          log.previous_status = selectedAsset.current_status;
-          log.new_status = overrideStatus;
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
+          log.assetId = selectedAsset.id;
+          log.fromLocationId = selectedAsset.currentLocationId || 'Unknown';
+          log.toLocationId = 'Admin Override';
+          log.previousStatus = selectedAsset.currentStatus;
+          log.newStatus = overrideStatus;
           log.remarks = `Status force-overwritten by Admin to ${overrideStatus}`;
         });
       });
@@ -146,7 +144,7 @@ function SearchWagon({ database }: any) {
     <Modal visible={overrideModal} transparent animationType="fade">
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Admin Override: {selectedAsset?.asset_number}</Text>
+          <Text style={styles.modalTitle}>Admin Override: {selectedAsset?.assetNumber}</Text>
           <Text style={styles.modalSubtitle}>Warning: Force changing a status skips normal validation checks. Use only for system corrections.</Text>
           
           <Text style={styles.detailLabel}>New Status</Text>

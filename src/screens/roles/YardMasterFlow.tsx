@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import SearchWagon from '../common/SearchWagon';
 import { useAssetConfig } from '../../hooks/useAssetConfig';
 import { useLocations } from '../../hooks/useLocations';
+import { YardRepository } from '../../database/v2/repositories/YardRepository';
 
 // Removed hardcoded getShopsForCategory
 
@@ -119,7 +120,7 @@ function UnassignedScreen({ database }: any) {
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [allocModal, setAllocModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const { userId } = useAuth();
+  const { userId, assignedLocationId } = useAuth();
   const { config, getShopsForCategory, loading } = useAssetConfig();
 
   if (loading) {
@@ -166,30 +167,20 @@ function UnassignedScreen({ database }: any) {
     }
 
     try {
-      await database.write(async () => {
-        await database.collections.get('assets').create((asset: any) => {
-          asset.asset_number = wagonNo.toUpperCase().trim();
-          asset.asset_category = assetCategory;
-          asset.current_status = 'NSY IN';
-          asset.nsy_in_date = new Date().getTime();
-          asset.is_active = true;
-        });
-
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = wagonNo.toUpperCase();
-          log.to_location = 'NSY';
-          log.new_status = 'NSY IN';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = `Recorded arrival at NSY via mobile.${photoUris.length > 0 ? ' [PHOTO_PROOF_ATTACHED]' : ''}`;
-        });
+      await YardRepository.recordArrival({
+        assetNumber: wagonNo,
+        category: assetCategory,
+        userId: userId,
+        photoCount: photoUris.length,
+        assignedLocationId: assignedLocationId
       });
+
       setWagonNo('');
       if (photoUris.length > 0) { queuePhotosForUpload(wagonNo, photoUris); }
       setPhotoUris([]);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      Alert.alert('Error', 'Failed to record arrival.');
     }
   };
 
@@ -201,55 +192,30 @@ function UnassignedScreen({ database }: any) {
   const executeAllocation = async (shop: string) => {
     if (!userId || !selectedAsset) return;
     try {
-      await database.write(async () => {
-        await selectedAsset.update((a: any) => {
-          a.current_status = 'Allocated';
-          a.allocated_shop = shop;
-        });
-
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = selectedAsset.asset_number;
-          log.from_location = 'NSY';
-          log.to_location = shop;
-          log.previous_status = 'NSY IN';
-          log.new_status = 'Allocated';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = `Allocated to ${shop}`;
-        });
+      await YardRepository.allocateAsset({
+        assetId: selectedAsset.id,
+        shopId: shop,
+        userId: userId
       });
+
       setAllocModal(false);
       setSelectedAsset(null);
     } catch (e: any) {
       console.error(e);
+      Alert.alert('Error', 'Failed to allocate asset.');
     }
   };
 
   const handleCancelArrival = async (asset: Asset) => {
     if (!userId) return;
     try {
-      await database.write(async () => {
-        // We shouldn't physically delete the asset so we keep sync integrity, just mark as deleted or cancel status
-        await asset.update((a: any) => {
-          a.current_status = 'Cancelled Entry';
-          a.is_active = false;
-        });
-
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = asset.asset_number;
-          log.from_location = 'NSY';
-          log.to_location = 'NSY';
-          log.previous_status = 'NSY IN';
-          log.new_status = 'Cancelled Entry';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = 'Entry cancelled by Yard Master due to error.';
-        });
+      await YardRepository.cancelArrival({
+        assetId: asset.id,
+        userId: userId
       });
     } catch (e: any) {
       console.error(e);
+      Alert.alert('Error', 'Failed to cancel arrival.');
     }
   };
 
@@ -355,27 +321,17 @@ function AllocatedScreen({ database }: any) {
   const executeReallocate = async (newShop: string) => {
     if (!userId || !selectedAsset) return;
     try {
-      await database.write(async () => {
-        await selectedAsset.update((a: any) => {
-          a.allocated_shop = newShop;
-        });
-
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = selectedAsset.asset_number;
-          log.from_location = 'NSY';
-          log.to_location = newShop;
-          log.previous_status = 'Allocated';
-          log.new_status = 'Allocated';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = `Re-allocated to ${newShop} due to error.`;
-        });
+      await YardRepository.reallocateAsset({
+        assetId: selectedAsset.id,
+        newShopId: newShop,
+        userId: userId
       });
+
       setRouteModal(false);
       setSelectedAsset(null);
     } catch (e: any) {
       console.error(e);
+      Alert.alert('Error', 'Failed to re-route asset.');
     }
   };
 
@@ -410,34 +366,18 @@ function AllocatedScreen({ database }: any) {
 
 function DispatchScreen({ database }: any) {
   const { userId } = useAuth();
-  const { getShopsForCategory } = useAssetConfig();
-  const { locations: qaLocations } = useLocations({ zone: 'QA' });
-  const qaLocation = qaLocations.length > 0 ? qaLocations[0].location_id : 'QA-LINE';
 
   const handleDispatch = async (asset: Asset) => {
     if (!userId) return;
     try {
-      await database.write(async () => {
-        await asset.update((a: any) => {
-          a.current_status = 'NSY OUT';
-          a.nsy_out_date = new Date().getTime();
-          a.is_active = false;
-        });
-
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = asset.asset_number;
-          log.from_location = qaLocation;
-          log.to_location = 'OUT';
-          log.previous_status = 'Fit';
-          log.new_status = 'NSY OUT';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = 'Dispatched from yard.';
-        });
+      await YardRepository.dispatchAsset({
+        assetId: asset.id,
+        userId: userId,
+        toRailway: 'OUT' // Replace with a real prompt if needed
       });
     } catch (e: any) {
       console.error(e);
+      Alert.alert('Error', 'Failed to dispatch asset.');
     }
   };
 

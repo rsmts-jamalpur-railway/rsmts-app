@@ -11,6 +11,7 @@ import Header from '../../components/Header';
 import { queuePhotosForUpload } from '../../services/api/PhotoUploader';
 import { useAuth } from '../../context/AuthContext';
 import { useLocations } from '../../hooks/useLocations';
+import { QARepository } from '../../database/v2/repositories/QARepository';
 
 const Tab = createBottomTabNavigator();
 
@@ -133,38 +134,17 @@ function QAFlowBase({ database }: any) {
   const processVerdict = async (asset: Asset, verdict: string, photoCount: number, targetShop: string | null) => {
     if (!userId) return;
     try {
-      let finalStatus = '';
-      if (verdict === 'Fit') finalStatus = 'Fit';
-      else if (verdict === 'Condemned') finalStatus = 'Condemned';
-      else finalStatus = 'Pending QA'; // Not Fit / Minor Fix
-
-      await database.write(async () => {
-        await asset.update((a: any) => {
-          a.current_status = finalStatus;
-          if (verdict === 'Fit') {
-            a.fit_date = new Date().getTime();
-          } else if (verdict !== 'Condemned') {
-            a.allocated_shop = targetShop; // route back to repair
-          }
-        });
-
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = asset.asset_number;
-          log.from_location = qaLocation;
-          log.to_location = verdict === 'Fit' ? 'NSY' : (verdict === 'Condemned' ? 'Condemned Yard' : targetShop);
-          log.previous_status = 'Pending QA';
-          log.new_status = finalStatus;
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = `QA Verdict: ${verdict}`;
-          if (photoCount > 0) {
-            log.remarks += ` [${photoCount}x PHOTO_PROOF_ATTACHED]`;
-          }
-        });
+      await QARepository.processVerdict({
+        assetId: asset.id,
+        verdict: verdict,
+        userId: userId,
+        targetShopId: targetShop,
+        photoCount: photoCount,
+        qaLocationId: qaLocation
       });
     } catch (e: any) {
       console.error(e);
+      Alert.alert('Error', 'Failed to process QA verdict.');
     }
   };
 

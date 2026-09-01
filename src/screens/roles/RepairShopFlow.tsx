@@ -12,6 +12,7 @@ import { queuePhotosForUpload } from '../../services/api/PhotoUploader';
 import { useAuth } from '../../context/AuthContext';
 import { useLocations } from '../../hooks/useLocations';
 import { useAssetConfig } from '../../hooks/useAssetConfig';
+import { RepairRepository } from '../../database/v2/repositories/RepairRepository';
 
 const requestCameraPermission = async () => {
   if (Platform.OS === 'android') {
@@ -91,7 +92,7 @@ const InShopList = ({ assets, onHold, onFinish, onReject }: { assets: Asset[], o
 );
 
 const ObservableInShopList = withObservables(['database'], ({ database }) => ({
-  assets: database.collections.get('assets').query(Q.where('current_status', 'Shop In')).observe(),
+  assets: database.collections.get('assets').query(Q.where('current_status', 'IN_REPAIR')).observe(),
 }))(InShopList);
 
 function IncomingScreen({ database, onMissing, onIntake }: any) {
@@ -145,19 +146,9 @@ function RepairShopFlowBase({ database }: any) {
   const handleMissing = async (asset: Asset) => {
     if (!userId) return;
     try {
-      await database.write(async () => {
-        await asset.update((a: any) => { a.current_status = 'Missing'; });
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = asset.asset_number;
-          log.from_location = asset.allocated_shop || 'Unknown';
-          log.to_location = 'Missing';
-          log.previous_status = asset.current_status;
-          log.new_status = 'Missing';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = 'Asset reported missing from allocated shop.';
-        });
+      await RepairRepository.reportMissing({
+        assetId: asset.id,
+        userId: userId
       });
     } catch (e: any) { Alert.alert('Error', e.message); }
   };
@@ -180,27 +171,13 @@ function RepairShopFlowBase({ database }: any) {
     if (!selectedAsset || !userId) return;
 
     try {
-      await database.write(async () => {
-        await selectedAsset.update((a: any) => {
-          a.current_status = 'Shop In';
-          a.repair_category = selectedCategory;
-          a.shop_in_date = new Date().getTime();
-        });
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = selectedAsset.asset_number;
-          log.from_location = 'NSY';
-          log.to_location = selectedAsset.allocated_shop || 'Shop';
-          log.previous_status = selectedAsset.current_status;
-          log.new_status = 'Shop In';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = customTat !== '' ? `Custom TAT: ${customTat} days. Reason: ${reason}` : `Category: ${selectedCategory}`;
-          if (photoUris.length > 0) {
-            log.remarks += ` [${photoUris.length}x PHOTO_PROOF_ATTACHED]`;
-          }
-        });
+      await RepairRepository.startRepair({
+        assetId: selectedAsset.id,
+        shopId: selectedAsset.current_location || 'Unknown',
+        repairCategoryId: selectedCategory,
+        userId: userId
       });
+
       setIntakeModal(false);
       setSelectedAsset(null);
       if (photoUris.length > 0 && selectedAsset) { queuePhotosForUpload(selectedAsset.asset_number, photoUris); }
@@ -211,19 +188,21 @@ function RepairShopFlowBase({ database }: any) {
   const handleHold = async (asset: Asset) => {
     if (!userId) return;
     try {
-      await database.write(async () => {
-        await asset.update((a: any) => { a.current_status = 'Hold'; });
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = asset.asset_number;
-          log.from_location = asset.allocated_shop || 'Shop';
-          log.to_location = asset.allocated_shop || 'Shop';
-          log.previous_status = asset.current_status;
-          log.new_status = 'Hold';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = 'Placed on hold.';
-        });
+      // Find the active repair cycle first
+      const activeCycles = await database.collections.get('repair_cycles').query(
+        Q.where('asset_id', asset.id),
+        Q.where('status', 'IN_PROGRESS')
+      ).fetch();
+
+      if (activeCycles.length === 0) {
+        Alert.alert('Error', 'No active repair cycle found to put on hold.');
+        return;
+      }
+
+      await RepairRepository.holdRepair({
+        repairCycleId: activeCycles[0].id,
+        reason: 'Hold requested by shop worker.',
+        userId: userId
       });
     } catch (e: any) { Alert.alert('Error', e.message); }
   };
@@ -236,25 +215,22 @@ function RepairShopFlowBase({ database }: any) {
   const executeFinish = async (destinationShop: string, isQA: boolean = false) => {
     if (!userId || !selectedAsset) return;
     try {
-      await database.write(async () => {
-        await selectedAsset.update((a: any) => { 
-          a.current_status = isQA ? 'Pending QA' : 'Allocated';
-          if (!isQA) {
-            a.allocated_shop = destinationShop;
-          }
-        });
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = selectedAsset.asset_number;
-          log.from_location = selectedAsset.allocated_shop || 'Shop';
-          log.to_location = destinationShop;
-          log.previous_status = selectedAsset.current_status;
-          log.new_status = isQA ? 'Pending QA' : 'Allocated';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = isQA ? 'Repair finished, pending QA inspection.' : `Forwarded to ${destinationShop} for further repairs.`;
-        });
+      const activeCycles = await database.collections.get('repair_cycles').query(
+        Q.where('asset_id', selectedAsset.id),
+        Q.where('status', 'IN_PROGRESS')
+      ).fetch();
+
+      if (activeCycles.length === 0) {
+        Alert.alert('Error', 'No active repair cycle found to complete.');
+        return;
+      }
+
+      await RepairRepository.closeRepair({
+        repairCycleId: activeCycles[0].id,
+        finalRemarks: isQA ? 'Repair finished, pending QA.' : `Forwarded to ${destinationShop}`,
+        userId: userId
       });
+
       setFinishModal(false);
       setSelectedAsset(null);
     } catch (e: any) { Alert.alert('Error', e.message); }
@@ -263,23 +239,9 @@ function RepairShopFlowBase({ database }: any) {
   const handleReject = async (asset: Asset) => {
     if (!userId) return;
     try {
-      await database.write(async () => {
-        await asset.update((a: any) => { 
-          a.current_status = 'NSY IN'; 
-          a.allocated_shop = null; 
-          a.repair_category = null;
-        });
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.asset_number = asset.asset_number;
-          log.from_location = asset.allocated_shop || 'Shop';
-          log.to_location = 'NSY';
-          log.previous_status = asset.current_status;
-          log.new_status = 'NSY IN';
-          log.handled_by = userId;
-          log.is_offline_entry = true;
-          log.timestamp = new Date().getTime();
-          log.remarks = 'Rejected by shop, returned to Yard Master.';
-        });
+      await RepairRepository.rejectRepair({
+        assetId: asset.id,
+        userId: userId
       });
     } catch (e: any) { Alert.alert('Error', e.message); }
   };

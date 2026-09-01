@@ -32,8 +32,9 @@ export default function LoginScreen() {
       const token = payload.tokens.access_token;
       const role = payload.user.role;
       const userId = payload.user.id;
+      const assignedLocationId = payload.user.assigned_location_id;
 
-      await login(role, token, userId);
+      await login(role, token, userId, assignedLocationId);
     } catch (err: any) {
       console.error('Login Error:', err);
       if (err.response && err.response.data && err.response.data.error) {
