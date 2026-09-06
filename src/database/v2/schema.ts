@@ -21,10 +21,11 @@ export default appSchema({
     tableSchema({
       name: 'locations',
       columns: [
-        { name: 'server_id', type: 'string', isIndexed: true },
+        { name: 'server_id', type: 'string', isIndexed: true, isOptional: true },
         { name: 'location_id', type: 'string', isIndexed: true },
         { name: 'location_type', type: 'string' },
-        { name: 'name', type: 'string' },
+        { name: 'name', type: 'string', isOptional: true },
+        { name: 'zone', type: 'string', isOptional: true },
         { name: 'max_capacity', type: 'number' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },

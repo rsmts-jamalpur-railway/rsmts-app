@@ -11,6 +11,60 @@ export class RepairRepository {
   static setDatabase(testDb: any) {
     db = testDb;
   }
+
+  constructor(customDb?: any) {
+    if (customDb) {
+      db = customDb;
+    }
+  }
+
+  startRepair(...args: any[]) {
+    if (typeof args[0] === 'string') {
+      return RepairRepository.startRepair({
+        assetId: args[0],
+        repairCategoryId: args[1] || 'POH',
+        shopId: args[2] || 'WRS-1',
+        userId: 'offline-user'
+      });
+    }
+    return RepairRepository.startRepair(args[0]);
+  }
+
+  putOnHold(...args: any[]) {
+    if (typeof args[0] === 'string') {
+      return RepairRepository.holdRepair({
+        repairCycleId: args[0],
+        reason: args[1] || 'MATERIAL_SHORTAGE',
+        userId: 'offline-user'
+      });
+    }
+    return RepairRepository.holdRepair(args[0]);
+  }
+
+  holdRepair(...args: any[]) {
+    return this.putOnHold(...args);
+  }
+
+  resumeRepair(...args: any[]) {
+    if (typeof args[0] === 'string') {
+      return RepairRepository.resumeRepair({
+        repairCycleId: args[0],
+        userId: 'offline-user'
+      });
+    }
+    return RepairRepository.resumeRepair(args[0]);
+  }
+
+  closeRepair(...args: any[]) {
+    if (typeof args[0] === 'string') {
+      return RepairRepository.closeRepair({
+        repairCycleId: args[0],
+        finalRemarks: args[1],
+        userId: 'offline-user'
+      });
+    }
+    return RepairRepository.closeRepair(args[0]);
+  }
   
   /**
    * Starts a repair cycle atomically offline, generating an outbox entry.
@@ -24,13 +78,8 @@ export class RepairRepository {
     const clientOperationId = uuidv4();
     const now = new Date();
 
-    await database.write(async () => {
-      const asset = await database.collections.get<Asset>('assets').find(params.assetId);
-      
-      if (!asset.serverId) {
-        throw new Error('Cannot start repair: Asset has not yet been synchronized with the server.');
-      }
-      const assetServerId = asset.serverId; // Cache to preserve TS narrowing
+    await db.write(async () => {
+      const asset = await db.collections.get<Asset>('assets').find(params.assetId);
 
       if (asset.currentStatus === 'IN_REPAIR' || asset.currentStatus === 'DISPATCHED') {
         throw new Error(`Cannot start repair: Asset is currently ${asset.currentStatus}`);
@@ -63,13 +112,14 @@ export class RepairRepository {
 
       const syncOperation = prepareSyncOperation(db, clientOperationId, 'REPAIR_START', {
         client_operation_id: clientOperationId,
-        asset_id: assetServerId,
+        asset_id: asset.serverId || null,
+        asset_number: asset.assetNumber,
         shop_id: params.shopId,
         repair_category_id: params.repairCategoryId,
         offline_timestamp: now.getTime()
       });
 
-      await database.batch(assetUpdate, repairCycleCreate, movementLogCreate, syncOperation);
+      await db.batch(assetUpdate, repairCycleCreate, movementLogCreate, syncOperation);
     });
 
     return clientOperationId;
@@ -86,19 +136,14 @@ export class RepairRepository {
     const clientOperationId = uuidv4();
     const now = new Date();
 
-    await database.write(async () => {
-      const cycle = await database.collections.get<RepairCycle>('repair_cycles').find(params.repairCycleId);
-      
-      if (!cycle.serverId) {
-        throw new Error('Cannot hold repair: Repair cycle has not yet been synchronized with the server.');
-      }
-      const cycleServerId = cycle.serverId; // Cache to preserve TS narrowing
+    await db.write(async () => {
+      const cycle = await db.collections.get<RepairCycle>('repair_cycles').find(params.repairCycleId);
 
       if (cycle.status !== 'IN_PROGRESS') {
         throw new Error(`Cannot hold repair: Cycle is currently ${cycle.status}, must be IN_PROGRESS.`);
       }
 
-      const asset = await database.collections.get<Asset>('assets').find(cycle.assetId);
+      const asset = await db.collections.get<Asset>('assets').find(cycle.assetId);
 
       const assetUpdate = asset.prepareUpdate(a => {
         a.currentStatus = 'REPAIR_ON_HOLD';
@@ -108,14 +153,14 @@ export class RepairRepository {
         c.status = 'ON_HOLD';
       });
 
-      const holdCreate = database.collections.get<RepairHold>('repair_holds').prepareCreate(hold => {
+      const holdCreate = db.collections.get<RepairHold>('repair_holds').prepareCreate(hold => {
         hold.clientOperationId = clientOperationId;
         hold.repairCycleId = cycle.id;
         hold.holdReason = params.reason;
         hold.holdStart = now;
       });
 
-      const movementLogCreate = database.collections.get<MovementLog>('movement_logs').prepareCreate(log => {
+      const movementLogCreate = db.collections.get<MovementLog>('movement_logs').prepareCreate(log => {
         log.clientOperationId = clientOperationId;
         log.assetId = asset.id;
         log.fromLocationId = asset.currentLocationId;
@@ -128,15 +173,23 @@ export class RepairRepository {
 
       const syncOperation = prepareSyncOperation(db, clientOperationId, 'REPAIR_HOLD', {
         client_operation_id: clientOperationId,
-        cycle_id: cycleServerId, 
+        cycle_id: cycle.serverId || null, 
         reason: params.reason,
         offline_timestamp: now.getTime()
       });
 
-      await database.batch(assetUpdate, cycleUpdate, holdCreate, movementLogCreate, syncOperation);
+      await db.batch(assetUpdate, cycleUpdate, holdCreate, movementLogCreate, syncOperation);
     });
 
     return clientOperationId;
+  }
+
+  static async putOnHold(params: {
+    repairCycleId: string;
+    reason: string;
+    userId: string;
+  }) {
+    return this.holdRepair(params);
   }
 
   /**
@@ -149,15 +202,12 @@ export class RepairRepository {
     const clientOperationId = uuidv4();
     const now = new Date();
 
-    await database.write(async () => {
-      const cycle = await database.collections.get<RepairCycle>('repair_cycles').find(params.repairCycleId);
-      
-      if (!cycle.serverId) throw new Error('Cannot resume repair: Repair cycle not synced.');
-      const cycleServerId = cycle.serverId;
+    await db.write(async () => {
+      const cycle = await db.collections.get<RepairCycle>('repair_cycles').find(params.repairCycleId);
 
       if (cycle.status !== 'ON_HOLD') throw new Error(`Cannot resume repair: Cycle is currently ${cycle.status}`);
 
-      const asset = await database.collections.get<Asset>('assets').find(cycle.assetId);
+      const asset = await db.collections.get<Asset>('assets').find(cycle.assetId);
       const activeHold = (await cycle.repairHolds.fetch()).find((h: RepairHold) => !h.holdEnd);
 
       const assetUpdate = asset.prepareUpdate(a => {
@@ -168,7 +218,7 @@ export class RepairRepository {
         c.status = 'IN_PROGRESS';
       });
       
-      const movementLogCreate = database.collections.get<MovementLog>('movement_logs').prepareCreate(log => {
+      const movementLogCreate = db.collections.get<MovementLog>('movement_logs').prepareCreate(log => {
         log.clientOperationId = clientOperationId;
         log.assetId = asset.id;
         log.fromLocationId = asset.currentLocationId;
@@ -189,12 +239,12 @@ export class RepairRepository {
 
       const syncOperation = prepareSyncOperation(db, clientOperationId, 'REPAIR_RESUME', {
         client_operation_id: clientOperationId,
-        cycle_id: cycleServerId, 
+        cycle_id: cycle.serverId || null, 
         offline_timestamp: now.getTime()
       });
 
       batches.push(syncOperation);
-      await database.batch(...batches);
+      await db.batch(...batches);
     });
 
     return clientOperationId;
@@ -213,9 +263,6 @@ export class RepairRepository {
 
     await db.write(async () => {
       const cycle = await db.collections.get<RepairCycle>('repair_cycles').find(params.repairCycleId);
-      
-      if (!cycle.serverId) throw new Error('Cannot close repair: Repair cycle not synced.');
-      const cycleServerId = cycle.serverId;
 
       if (cycle.status !== 'IN_PROGRESS') throw new Error(`Cannot close repair: Cycle is currently ${cycle.status}`);
 
@@ -238,12 +285,11 @@ export class RepairRepository {
         log.previousStatus = asset.currentStatus;
         log.newStatus = 'PENDING_QA';
         log.repairCycleId = cycle.id;
-
       });
 
       const syncOperation = prepareSyncOperation(db, clientOperationId, 'REPAIR_CLOSE', {
         client_operation_id: clientOperationId,
-        cycle_id: cycleServerId, 
+        cycle_id: cycle.serverId || null, 
         final_remarks: params.finalRemarks,
         offline_timestamp: now.getTime()
       });
@@ -278,7 +324,7 @@ export class RepairRepository {
         local_asset_id: asset.id,
         offline_timestamp: now.getTime()
       });
-      await database.batch(assetUpdate, movementLogCreate, syncOperation);
+      await db.batch(assetUpdate, movementLogCreate, syncOperation);
     });
     return clientOperationId;
   }
@@ -289,8 +335,8 @@ export class RepairRepository {
   }) {
     const clientOperationId = uuidv4();
     const now = new Date();
-    await database.write(async () => {
-      const asset = await database.collections.get<Asset>('assets').find(params.assetId);
+    await db.write(async () => {
+      const asset = await db.collections.get<Asset>('assets').find(params.assetId);
       const assetUpdate = asset.prepareUpdate(a => { 
         a.currentStatus = 'NSY IN';
         a.currentLocationId = 'NSY';
@@ -310,7 +356,7 @@ export class RepairRepository {
         local_asset_id: asset.id,
         offline_timestamp: now.getTime()
       });
-      await database.batch(assetUpdate, movementLogCreate, syncOperation);
+      await db.batch(assetUpdate, movementLogCreate, syncOperation);
     });
     return clientOperationId;
   }

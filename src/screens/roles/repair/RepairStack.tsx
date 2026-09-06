@@ -16,6 +16,7 @@ export default function RepairStack() {
       <Stack.Screen name="ActiveRepairs" component={ActiveRepairsScreen} />
       <Stack.Screen name="OnHold" component={OnHoldScreen} />
       <Stack.Screen name="PendingQA" component={PendingQAScreen} />
+      <Stack.Screen name="ReportException" component={require('../common/ReportExceptionScreen').default} />
     </Stack.Navigator>
   );
 }

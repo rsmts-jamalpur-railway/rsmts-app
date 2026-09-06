@@ -15,7 +15,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Please enter Email Address and Password');
+      setError('Please enter Employee ID / Email and Password');
       return;
     }
 
@@ -24,29 +24,47 @@ export default function LoginScreen() {
 
     try {
       const response = await api.post('/auth/login', {
-        email: email,
+        identifier: email.trim(),
         password: password,
       });
 
-      const payload = response.data.data;
-      const token = payload.tokens.access_token;
-      const role = payload.user.role;
-      const userId = payload.user.id;
-      const assignedLocationId = payload.user.assigned_location_id;
+      const payload = response.data?.data || response.data;
+      const token = payload.tokens?.access_token || payload.access_token;
+      const user = payload.user || {};
+      const roles: string[] = Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : ['VIEWER']);
+      const primaryRole = roles[0] || 'VIEWER';
+      const userId = user.id || '';
+      const employeeId = user.employee_id || user.employee_number || user.id || '';
+      const userName = user.name || '';
+      const assignedLocationId = user.assigned_location_id || null;
 
-      await login(role, token, userId, assignedLocationId);
+      await login({
+        role: primaryRole,
+        roles,
+        token,
+        userId,
+        employeeId,
+        userName,
+        assignedLocationId,
+      });
     } catch (err: any) {
       console.error('Login Error:', err);
-      if (err.response && err.response.data && err.response.data.error) {
-        setError(err.response.data.error);
-      } else if (err.response && err.response.data && err.response.data.message) {
+      if (err.response?.data?.message) {
         setError(err.response.data.message);
+      } else if (err.response?.data?.error) {
+        setError(err.response.data.error);
       } else {
-        setError('Invalid Email Credentials or Server Offline');
+        setError('Invalid Credentials or Backend Offline');
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const fillCredentials = (id: string, pwd: string) => {
+    setEmail(id);
+    setPassword(pwd);
+    setError('');
   };
 
   return (
@@ -56,8 +74,24 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>Login to your</Text>
-          <Text style={styles.title}>account</Text>
+          <Text style={styles.title}>RSMTS Login</Text>
+          <Text style={styles.subtitle}>Jamalpur Workshop Operations</Text>
+
+          {/* Quick Demo Fill Chips */}
+          <View style={styles.chipRow}>
+            <TouchableOpacity 
+              style={styles.chip} 
+              onPress={() => fillCredentials('admin@rsmts.gov.in', 'Admin@123!')}
+            >
+              <Text style={styles.chipText}>System Admin</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.chip} 
+              onPress={() => fillCredentials('farhanaiyyar04@gmail.com', 'Admin@123!')}
+            >
+              <Text style={styles.chipText}>Supervisor</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.formContainer}>
@@ -144,13 +178,38 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: {
-    marginBottom: 48,
+    marginBottom: 32,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#1A202C',
-    lineHeight: 40,
+    lineHeight: 36,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    flexWrap: 'wrap',
+  },
+  chip: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  chipText: {
+    color: '#1d4ed8',
+    fontSize: 12,
+    fontWeight: '600',
   },
   formContainer: {
     width: '100%',

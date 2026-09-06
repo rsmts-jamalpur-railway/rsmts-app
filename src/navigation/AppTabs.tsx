@@ -11,18 +11,31 @@ import QAStack from '../screens/roles/qa/QAStack';
 import SearchScreen from '../screens/common/SearchWagon';
 import SyncStatusScreen from '../screens/roles/common/SyncStatusScreen';
 
+import AdminGodMode from '../screens/roles/AdminGodMode';
+
 const Tab = createBottomTabNavigator();
 
 export default function AppTabs() {
-  const { role } = useAuth();
+  const { role, roles } = useAuth();
+  const isAdmin = role === 'SYSTEM_ADMIN' || role === 'MANAGEMENT' || roles?.includes('SYSTEM_ADMIN');
 
   const getDashboardComponent = () => {
     switch (role) {
-      case 'YARD_MASTER': return YardStack;
-      case 'REPAIR_SUPERVISOR': return RepairStack;
-      case 'MFG_SUPERVISOR': return MfgStack;
-      case 'QA_INSPECTOR': return QAStack;
-      default: return YardStack; // Fallback handled by RootNavigator
+      case 'YARD_MASTER':
+      case 'YARD_CONTROLLER':
+        return YardStack;
+      case 'REPAIR_SUPERVISOR':
+        return RepairStack;
+      case 'MFG_SUPERVISOR':
+      case 'MANUFACTURING_SUPERVISOR':
+        return MfgStack;
+      case 'QA_INSPECTOR':
+        return QAStack;
+      case 'SYSTEM_ADMIN':
+      case 'MANAGEMENT':
+        return AdminGodMode;
+      default:
+        return YardStack;
     }
   };
 
@@ -51,6 +64,13 @@ export default function AppTabs() {
         component={SearchScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Icon name="magnify" color={color} size={size} />
+        }}
+      />
+      <Tab.Screen
+        name="Exceptions"
+        component={require('../screens/roles/common/ReportExceptionScreen').default}
+        options={{
+          tabBarIcon: ({ color, size }) => <Icon name="alert-circle-outline" color={color} size={size} />
         }}
       />
       <Tab.Screen

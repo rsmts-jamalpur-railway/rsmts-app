@@ -21,4 +21,21 @@ export default class Asset extends Model {
   @children('qa_inspections') qaInspections: any;
   @children('exceptions') exceptions: any;
   @children('movement_logs') movementLogs: any;
+
+  // Backward-compatible snake_case getters
+  get asset_number(): string {
+    return this.assetNumber;
+  }
+  get current_status(): string {
+    return this.currentStatus;
+  }
+  get current_location(): string {
+    return this.currentLocationId;
+  }
+  get currentLocation(): string {
+    return this.currentLocationId;
+  }
+  get allocated_shop(): string {
+    return this.currentLocationId;
+  }
 }

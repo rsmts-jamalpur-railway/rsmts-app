@@ -13,17 +13,17 @@ export interface AssetFormConfig {
 }
 
 const defaultConfig: AssetFormConfig = {
-  wagonTypes: ['BOXNHL'],
-  locoTypes: ['WAG-9'],
-  craneTypes: ['140T Crane'],
-  actions: ['POH'],
-  repairCategories: ['Light', 'Medium', 'Heavy'],
+  wagonTypes: ['BOXNHL', 'BCNHL', 'BVZI', 'BTPN', 'BOBRN', 'BOXN', 'BRNA'],
+  locoTypes: ['WAP7', 'WAG9', 'WAP5', 'WDG4', 'WDM3A'],
+  craneTypes: ['140T_CRANE', '175T_CRANE', '140T_COWANS'],
+  actions: ['POH', 'ROH', 'NPOH', 'SPECIAL_REPAIR'],
+  repairCategories: ['POH', 'ROH', 'NPOH', 'SPECIAL_REPAIR'],
   categoryDestinations: {
     WAGON: ['WRS-1', 'WRS-2', 'WRS-3', 'WRS-4', 'WRS-5'],
-    LOCO: ['DPS', 'Electric Shed'],
-    CRANE: ['Crane Shop', 'Trial Yard'],
-    TOWER_CAR: ['Crane Shop', 'Tower Car Line']
-  }
+    LOCO: ['DPS'],
+    CRANE: ['CRANE', 'Trial Yard'],
+    TOWER_CAR: ['CRANE', 'Tower Car Line'],
+  },
 };
 
 export const useAssetConfig = () => {
@@ -33,14 +33,16 @@ export const useAssetConfig = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const settingsCollection = database.collections.get('settings');
-        const configRecord = await settingsCollection.query().fetch();
-        const assetFormSetting = configRecord.find((r: any) => r.key === 'ASSET_FORM_CONFIG');
-        if (assetFormSetting) {
-          setConfig(JSON.parse((assetFormSetting as any).value));
+        if ((database.collections as any).has?.('settings')) {
+          const settingsCollection = database.collections.get('settings');
+          const configRecord = await settingsCollection.query().fetch();
+          const assetFormSetting = configRecord.find((r: any) => r.key === 'ASSET_FORM_CONFIG');
+          if (assetFormSetting) {
+            setConfig(JSON.parse((assetFormSetting as any).value));
+          }
         }
       } catch (err) {
-        console.warn('Failed to fetch ASSET_FORM_CONFIG from WatermelonDB', err);
+        // Fall back gracefully to defaultConfig
       } finally {
         setLoading(false);
       }

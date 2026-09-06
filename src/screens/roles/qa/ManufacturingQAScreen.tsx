@@ -3,10 +3,10 @@ import { View, StyleSheet, Alert, SafeAreaView } from 'react-native';
 import Header from '../../../components/Header';
 import SharedQAForm, { QAVerdict } from './SharedQAForm';
 import { QARepository } from '../../../database/v2/repositories/QARepository';
-import { useAuth } from '../../../../rsmts-dashboard/src/contexts/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function ManufacturingQAScreen({ route, navigation }: any) {
-  const { user } = useAuth();
+  const { userId, employeeId } = useAuth();
   const { assetId, assetNumber, orderId } = route.params;
 
   const handleSubmit = async (verdict: QAVerdict, remarks: string) => {
@@ -16,7 +16,7 @@ export default function ManufacturingQAScreen({ route, navigation }: any) {
         manufacturingOrderId: orderId,
         result: verdict,
         remarks,
-        userId: user?.id || 'offline-user'
+        userId: employeeId || userId || 'offline-user'
       });
       Alert.alert('Success', 'Inspection submitted successfully', [
         { text: 'OK', onPress: () => navigation.goBack() }

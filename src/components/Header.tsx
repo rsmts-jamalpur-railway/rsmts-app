@@ -7,17 +7,22 @@ import { syncDatabase } from '../services/sync';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import withObservables from '@nozbe/with-observables';
 
+import { Q } from '@nozbe/watermelondb';
+
 interface HeaderProps {
+  title?: string;
+  onBack?: () => void;
   onSync?: () => void;
-  logs?: any[];
+  pendingOperations?: any[];
 }
 
-function HeaderBase({ onSync, logs = [] }: HeaderProps) {
+function HeaderBase({ title, onBack, onSync, pendingOperations = [] }: HeaderProps) {
   const insets = useSafeAreaInsets();
-  const { role, employeeId, assignedLocationId, logout } = useAuth();
+  const { role, roles, employeeId, assignedLocationId, logout, switchRole } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const pendingChanges = logs.filter(log => log.syncStatus !== 'synced').length;
+  const pendingCount = pendingOperations.length;
+  const isSuperUser = roles?.includes('SYSTEM_ADMIN') || roles?.includes('MANAGEMENT') || role === 'SYSTEM_ADMIN' || role === 'MANAGEMENT';
 
   const handleSync = async () => {
     if (onSync) {
@@ -44,43 +49,96 @@ function HeaderBase({ onSync, logs = [] }: HeaderProps) {
     ]);
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
-      <View style={styles.topRow}>
-        <Text style={styles.brandText}>RSMTS</Text>
-        
-        <View style={styles.rightControls}>
+  const openRoleSwitcher = () => {
+    Alert.alert(
+      'Switch Operational Role',
+      'Select a role to simulate or switch views:',
+      [
+        { text: 'Yard Controller', onPress: () => switchRole('YARD_CONTROLLER') },
+        { text: 'Repair Supervisor', onPress: () => switchRole('REPAIR_SUPERVISOR') },
+        { text: 'Mfg Supervisor', onPress: () => switchRole('MANUFACTURING_SUPERVISOR') },
+        { text: 'QA Inspector', onPress: () => switchRole('QA_INSPECTOR') },
+        { text: 'System Admin (God Mode)', onPress: () => switchRole('SYSTEM_ADMIN') },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  if (title) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.topRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {onBack && (
+              <TouchableOpacity onPress={onBack} style={{ marginRight: 12, padding: 4 }}>
+                <Icon name="arrow-left" size={24} color="#0f172a" />
+              </TouchableOpacity>
+            )}
+            <Text style={styles.brandText}>{title}</Text>
+          </View>
           <TouchableOpacity style={styles.syncContainer} onPress={handleSync} disabled={isSyncing}>
             {isSyncing ? (
               <ActivityIndicator size="small" color="#0A74DA" />
             ) : (
-              <View style={[styles.statusDot, { backgroundColor: pendingChanges > 0 ? '#f59e0b' : '#22c55e' }]} />
+              <View style={[styles.statusDot, { backgroundColor: pendingCount > 0 ? '#f59e0b' : '#22c55e' }]} />
             )}
             <Text style={styles.syncText}>
-              {isSyncing ? 'Syncing...' : (pendingChanges > 0 ? `${pendingChanges} Pending` : 'Synced')}
+              {isSyncing ? 'Syncing...' : (pendingCount > 0 ? `${pendingCount} Pending` : 'Synced')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+      <View style={styles.topRow}>
+        <Text style={styles.brandText}>RSMTS</Text>
+        
+        <View style={styles.rightControls}>
+          {isSuperUser && (
+            <TouchableOpacity style={styles.switchRoleBtn} onPress={openRoleSwitcher}>
+              <Icon name="account-switch" size={16} color="#0A74DA" />
+              <Text style={styles.switchRoleText}>SWITCH ROLE</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.syncContainer} onPress={handleSync} disabled={isSyncing}>
+            {isSyncing ? (
+              <ActivityIndicator size="small" color="#0A74DA" />
+            ) : (
+              <View style={[styles.statusDot, { backgroundColor: pendingCount > 0 ? '#f59e0b' : '#22c55e' }]} />
+            )}
+            <Text style={styles.syncText}>
+              {isSyncing ? 'Syncing...' : (pendingCount > 0 ? `${pendingCount} Pending` : 'Synced')}
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity onPress={handleLogout} style={{ marginLeft: 12 }}>
-            <Icon name="logout" size={24} color="#ef4444" />
+            <Icon name="logout" size={22} color="#ef4444" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <Text style={styles.locationText}>{assignedLocationId || 'Unknown Location'}</Text>
+      <Text style={styles.locationText}>{assignedLocationId || 'Jamalpur Workshop'}</Text>
       
       <View style={styles.divider} />
 
       <View style={styles.userRow}>
-        <Text style={styles.roleText}>{role ? role.replace('_', ' ') : 'UNKNOWN ROLE'}</Text>
-        <Text style={styles.employeeText}>{employeeId || 'Unknown EMP'}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.roleText}>{role ? role.replace(/_/g, ' ') : 'UNKNOWN ROLE'}</Text>
+          <Text style={styles.employeeText}>{employeeId || 'Unknown EMP'}</Text>
+        </View>
       </View>
     </View>
   );
 }
 
 const enhance = withObservables(['database'], ({ database }: any) => ({
-  logs: database.collections.get('movement_logs').query().observe(), // We might need sync_operations later
+  pendingOperations: database.collections.get('sync_operations').query(
+    Q.where('status', 'PENDING')
+  ).observe(),
 }));
 
 export default withDatabase(enhance(HeaderBase));
@@ -151,5 +209,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginTop: 2,
-  }
+  },
+  switchRoleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    marginRight: 8,
+  },
+  switchRoleText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0A74DA',
+  },
 });

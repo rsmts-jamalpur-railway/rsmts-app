@@ -14,6 +14,7 @@ export default function MfgStack() {
       <Stack.Screen name="Orders" component={OrdersScreen} />
       <Stack.Screen name="ActiveOrders" component={ActiveOrdersScreen} />
       <Stack.Screen name="PendingQA" component={PendingQAScreen} />
+      <Stack.Screen name="ReportException" component={require('../common/ReportExceptionScreen').default} />
     </Stack.Navigator>
   );
 }

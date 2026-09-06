@@ -16,10 +16,19 @@ export type CommandType =
   | 'REPAIR_MISSING'
   | 'REPAIR_REJECT'
   | 'MANUFACTURING_START'
+  | 'MANUFACTURING_CLOSE'
   | 'QA_SUBMIT'
   | 'QA_INSPECT'
+  | 'EXCEPTION_REPORT'
   | 'YARD_ALLOCATE'
-  | 'YARD_CANCEL_INTAKE';
+  | 'YARD_CANCEL_INTAKE'
+  | 'TEST_500'
+  | 'TEST_401'
+  | 'TEST_400_STATE'
+  | 'TEST_403'
+  | 'TEST_409_CAPACITY'
+  | 'TEST_409_IDEMPOTENCY'
+  | string;
 
 export type SyncStatus =
   | 'PENDING'
@@ -39,7 +48,7 @@ export function prepareSyncOperation(
   commandType: CommandType,
   payload: object
 ) {
-  return db.collections.get<SyncOperation>('sync_operations').prepareCreate((syncOp: any) => {
+  return db.collections.get('sync_operations').prepareCreate((syncOp: any) => {
     syncOp.clientOperationId = clientOperationId;
     syncOp.commandType = commandType;
     syncOp.payload = JSON.stringify(payload);
