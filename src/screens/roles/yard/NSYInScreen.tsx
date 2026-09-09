@@ -564,11 +564,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     marginTop: 8,
     marginBottom: 36,
     gap: 8,
-    elevation: 2,
   },
   submitBtnDisabled: {
     opacity: 0.6,

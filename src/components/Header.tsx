@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } fr
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { syncDatabase } from '../services/sync';
+import { SyncEngine } from '../database/v2/sync';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import withObservables from '@nozbe/with-observables';
 
@@ -32,7 +32,7 @@ function HeaderBase({ title, onBack, onSync, pendingOperations = [] }: HeaderPro
     
     setIsSyncing(true);
     try {
-      await syncDatabase();
+      await SyncEngine.sync();
       Alert.alert('Success', 'Data synchronized successfully.');
     } catch (error: any) {
       console.error('Sync error:', error);

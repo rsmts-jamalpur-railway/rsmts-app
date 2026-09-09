@@ -51,11 +51,10 @@ function RepairDashboardComponent({ navigation, repairCycles = [], assets = [], 
          (!filterShop || a.currentLocationId === filterShop || a.currentLocationId === 'YARD')
   ).length;
 
-  // Filter recent logs relevant to repair
+  // Filter recent logs relevant to repair (only valid backend statuses)
   const repairLogs = recentLogs.filter(
-    log => log.newStatus === 'IN_REPAIR' || log.newStatus === 'REPAIR_ON_HOLD' || 
-           log.newStatus === 'Allocated' || log.newStatus === 'PENDING_QA' ||
-           log.newStatus === 'Missing' || log.newStatus === 'NSY IN'
+    log => log.newStatus === 'IN_REPAIR' || log.newStatus === 'REPAIR_ON_HOLD' ||
+           log.newStatus === 'ALLOCATED' || log.newStatus === 'PENDING_QA'
   ).slice(0, 5);
 
   return (
@@ -96,7 +95,7 @@ function RepairDashboardComponent({ navigation, repairCycles = [], assets = [], 
       </View>
 
       {/* Live Operational Metrics */}
-      <Text style={styles.sectionTitle}>[ LIVE SHOP TELEMETRY - {selectedShop} ]</Text>
+      <Text style={styles.sectionTitle}>LIVE SHOP TELEMETRY — {selectedShop}</Text>
       <View style={styles.kpiRow}>
         <TouchableOpacity 
           style={[styles.kpiCard, styles.kpiActive]} 
@@ -403,7 +402,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    elevation: 1,
   },
   actionText: {
     color: '#FFFFFF',

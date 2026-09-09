@@ -320,12 +320,11 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    elevation: 2,
   },
   submitFit: { backgroundColor: '#059669' },
   submitMinor: { backgroundColor: '#d97706' },

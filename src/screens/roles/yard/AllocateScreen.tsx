@@ -50,10 +50,10 @@ export default function AllocateScreen({ navigation }: any) {
       setIsLoadingList(true);
       const assetsTable = database.collections.get<Asset>('assets');
       
-      // Fetch assets in yard awaiting allocation
+      // Fetch assets in yard awaiting allocation (RECEIVED_IN_YARD is set by backend on YARD_INTAKE)
       const yardAssets = await assetsTable
         .query(
-          Q.where('current_status', Q.oneOf(['RECEIVED_IN_YARD', 'Unallocated', 'AWAITING_ALLOCATION']))
+          Q.where('current_status', Q.oneOf(['RECEIVED_IN_YARD']))
         )
         .fetch();
       setUnallocatedAssets(yardAssets);
@@ -508,11 +508,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     marginTop: 12,
     marginBottom: 36,
     gap: 8,
-    elevation: 2,
   },
   submitBtnDisabled: {
     opacity: 0.5,

@@ -77,7 +77,8 @@ export default function LoginScreen() {
           <Text style={styles.title}>RSMTS Login</Text>
           <Text style={styles.subtitle}>Jamalpur Workshop Operations</Text>
 
-          {/* Quick Demo Fill Chips */}
+          {/* Quick Demo Fill Chips — DEV ONLY */}
+          {__DEV__ && (
           <View style={styles.chipRow}>
             <TouchableOpacity 
               style={styles.chip} 
@@ -92,6 +93,7 @@ export default function LoginScreen() {
               <Text style={styles.chipText}>Supervisor</Text>
             </TouchableOpacity>
           </View>
+          )}
         </View>
 
         <View style={styles.formContainer}>

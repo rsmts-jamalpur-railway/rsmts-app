@@ -43,9 +43,9 @@ function MfgDashboardComponent({ navigation, orders = [], assets = [], recentLog
     o => o.orderStatus === 'COMPLETED' && (!filterShop || o.manufacturingShopId === filterShop)
   ).length;
 
-  // Incoming stock allocated to manufacturing shop
+  // FIX: Assets allocated to Mfg shops are marked IN_MANUFACTURING, not 'Allocated'
   const incomingOrdersCount = assets.filter(
-    a => (a.currentStatus === 'Allocated' || a.currentStatus === 'ALLOCATED') &&
+    a => a.currentStatus === 'ALLOCATED' &&
          (!filterShop || a.currentLocationId === filterShop)
   ).length;
 
@@ -99,7 +99,7 @@ function MfgDashboardComponent({ navigation, orders = [], assets = [], recentLog
       </View>
 
       {/* Live Operational Metrics */}
-      <Text style={styles.sectionTitle}>[ LIVE PRODUCTION TELEMETRY - {selectedShop} ]</Text>
+      <Text style={styles.sectionTitle}>LIVE PRODUCTION TELEMETRY — {selectedShop}</Text>
       <View style={styles.kpiRow}>
         <TouchableOpacity 
           style={[styles.kpiCard, styles.kpiActive]} 
@@ -389,7 +389,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    elevation: 1,
   },
   actionText: {
     color: '#FFFFFF',

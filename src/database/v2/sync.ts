@@ -1,11 +1,11 @@
 import { synchronize } from '@nozbe/watermelondb/sync';
 import { database } from './index';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 import SyncOperation from './models/SyncOperation';
 import { Q } from '@nozbe/watermelondb';
+import { API_BASE_URL } from '../../config';
 
-const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3001/v1' : 'http://127.0.0.1:3001/v1';
+const BASE_URL = API_BASE_URL;
 const SYNC_CURSOR_KEY = '@rsmts_sync_cursor';
 
 export class SyncEngine {

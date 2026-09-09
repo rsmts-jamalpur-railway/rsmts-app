@@ -33,9 +33,10 @@ function QADashboardComponent({
          (a.currentLocationId.startsWith('WRS') || a.currentLocationId === 'DPS' || a.currentLocationId === 'YARD')
   ).length;
 
+  // FIX: Use explicit known mfg location IDs — avoid fragile includes() checks
   const pendingMfgQACount = assets.filter(
     a => (a.currentStatus === 'PENDING_QA' || a.currentStatus === 'Pending QA') &&
-         (a.currentLocationId === 'GIF' || a.currentLocationId.includes('MFG') || a.currentLocationId.includes('FORGE'))
+         (['GIF', 'BOGIE-MFG', 'WHEEL-MFG', 'FORGE-SHOP'].includes(a.currentLocationId))
   ).length;
 
   const totalFitCertificates = fitCertificates.length;
@@ -61,7 +62,7 @@ function QADashboardComponent({
       </View>
 
       {/* Live Operational Metrics */}
-      <Text style={styles.sectionTitle}>[ LIVE QUALITY ASSURANCE TELEMETRY ]</Text>
+      <Text style={styles.sectionTitle}>LIVE QUALITY ASSURANCE TELEMETRY</Text>
       <View style={styles.kpiRow}>
         <TouchableOpacity 
           style={[styles.kpiCard, styles.kpiRepair]} 
@@ -312,7 +313,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    elevation: 1,
   },
   actionText: {
     color: '#FFFFFF',

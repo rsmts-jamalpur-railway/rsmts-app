@@ -26,13 +26,6 @@ export default function Splash({ onFinish }: SplashProps) {
             ])
         ).start();
 
-        // Check authentication status here and trigger redirect
-        setTimeout(() => {
-            // Simulated check: replace with actual AsyncStorage / Token check
-            const savedRole = null; // simulate not logged in
-            onFinish(savedRole);
-        }, 2500);
-
     }, [dot1, dot2, dot3, onFinish]);
 
     return (

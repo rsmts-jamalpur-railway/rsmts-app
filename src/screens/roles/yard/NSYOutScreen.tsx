@@ -39,10 +39,10 @@ export default function NSYOutScreen({ navigation }: any) {
   const loadFitAssets = async () => {
     try {
       setIsLoading(true);
-      // Query assets ready for dispatch (marked FIT by QA Inspector or completed overhaul)
+      // Query assets ready for dispatch (backend sets exactly 'FIT' after QA_INSPECT verdict=FIT)
       const fitAssets = await database.collections.get<Asset>('assets')
         .query(
-          Q.where('current_status', Q.oneOf(['FIT', 'QA_PASSED', 'READY_FOR_DISPATCH', 'Fit']))
+          Q.where('current_status', 'FIT')
         )
         .fetch();
         

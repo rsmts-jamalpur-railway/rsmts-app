@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 
 export interface UserProfile {
   id: string;
@@ -81,9 +82,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     loadStorageData();
+
+    // Listen for token expiry emitted by the axios 401 interceptor.
+    // Resets in-memory state so RootNavigator redirects to Login immediately.
+    const sub = DeviceEventEmitter.addListener('AUTH_SESSION_EXPIRED', () => {
+      setRole(null);
+      setRoles([]);
+      setToken(null);
+      setUserId(null);
+      setEmployeeId(null);
+      setUserName(null);
+      setAssignedLocationId(null);
+      setPermissions([]);
+    });
+    return () => sub.remove();
   }, []);
 
   const loadStorageData = async () => {
+    const startTime = Date.now();
     try {
       const storedRole = await AsyncStorage.getItem('@Auth:role');
       const storedRoles = await AsyncStorage.getItem('@Auth:roles');
@@ -108,7 +124,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Failed to load auth state', error);
     } finally {
-      setIsLoading(false);
+      const elapsed = Date.now() - startTime;
+      const remainingTime = Math.max(0, 3000 - elapsed); // Minimum 3 seconds
+      setTimeout(() => {
+        setIsLoading(false);
+      }, remainingTime);
     }
   };
 
