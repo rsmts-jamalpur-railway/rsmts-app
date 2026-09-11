@@ -87,10 +87,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Resets in-memory state so RootNavigator redirects to Login immediately.
     const sub = DeviceEventEmitter.addListener('AUTH_SESSION_EXPIRED', async () => {
       try {
-        await AsyncStorage.multiRemove([
-          '@Auth:role', '@Auth:roles', '@Auth:token', '@Auth:userId', 
-          '@Auth:employeeId', '@Auth:userName', '@Auth:assignedLocationId', '@Auth:permissions'
-        ]);
+        await AsyncStorage.removeItem('@Auth:role');
+        await AsyncStorage.removeItem('@Auth:roles');
+        await AsyncStorage.removeItem('@Auth:token');
+        await AsyncStorage.removeItem('@Auth:userId');
+        await AsyncStorage.removeItem('@Auth:employeeId');
+        await AsyncStorage.removeItem('@Auth:userName');
+        await AsyncStorage.removeItem('@Auth:assignedLocationId');
+        await AsyncStorage.removeItem('@Auth:permissions');
       } catch (e) {
         console.error('Failed to clear async storage on expiry', e);
       }
