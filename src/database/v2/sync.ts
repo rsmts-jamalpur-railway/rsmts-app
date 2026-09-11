@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import SyncOperation from './models/SyncOperation';
 import { Q } from '@nozbe/watermelondb';
 import { API_BASE_URL } from '../../config';
+import { DeviceEventEmitter } from 'react-native';
 
 const BASE_URL = API_BASE_URL;
 const SYNC_CURSOR_KEY = '@rsmts_sync_cursor';
@@ -132,8 +133,16 @@ export class SyncEngine {
       
     } catch (error: any) {
       console.error('Sync failed:', error);
-      if (error?.message?.includes('401') || error?.status === 401) {
+      if (error?.message?.includes('401') || error?.status === 401 || error?.message?.includes('Unauthorized')) {
         console.warn('Authentication failed. Queue paused until re-auth.');
+        await AsyncStorage.multiRemove([
+          '@Auth:token', '@Auth:role', '@Auth:roles', '@Auth:userId',
+          '@Auth:employeeId', '@Auth:userName', '@Auth:assignedLocationId', '@Auth:permissions'
+        ]).catch(() => {
+           // Fallback if multiRemove is not supported
+           AsyncStorage.removeItem('@Auth:token');
+        });
+        DeviceEventEmitter.emit('AUTH_SESSION_EXPIRED');
       }
       throw error;
     } finally {
