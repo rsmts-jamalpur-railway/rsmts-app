@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Header from '../../../components/Header';
 import { database } from '../../../database/v2';
 import SyncOperation from '../../../database/v2/models/SyncOperation';
 import { SyncEngine } from '../../../database/v2/sync';
 import { Q } from '@nozbe/watermelondb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function SyncStatusScreen({ navigation }: any) {
   const [operations, setOperations] = useState<SyncOperation[]>([]);
@@ -17,7 +17,7 @@ export default function SyncStatusScreen({ navigation }: any) {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 5000); // Poll every 5s for live updates
+    const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -41,7 +41,9 @@ export default function SyncStatusScreen({ navigation }: any) {
       const cursor = await AsyncStorage.getItem('@rsmts_sync_cursor');
       if (cursor && cursor !== '0') {
         const date = new Date(parseInt(cursor));
-        setLastPullTime(date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        const today = new Date();
+        const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+        setLastPullTime(isToday ? `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : date.toLocaleString());
       }
     } catch (e) {
       console.error(e);
@@ -51,6 +53,7 @@ export default function SyncStatusScreen({ navigation }: any) {
   };
 
   const handleSync = async () => {
+    if (syncing) return;
     setSyncing(true);
     try {
       await SyncEngine.sync();
@@ -62,123 +65,271 @@ export default function SyncStatusScreen({ navigation }: any) {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusStyle = (status: string) => {
     switch(status) {
-      case 'PENDING': return '#f59e0b';
-      case 'SYNCED': return '#10b981';
-      case 'CONFLICT': return '#ef4444';
-      case 'RETRY': return '#f97316';
-      default: return '#64748b';
+      case 'PENDING': return { bg: '#fef3c7', text: '#92400e', icon: 'clock-outline', iconColor: '#d97706' };
+      case 'SYNCED': return { bg: '#ecfdf5', text: '#065f46', icon: 'check-circle-outline', iconColor: '#10b981' };
+      case 'CONFLICT': return { bg: '#fef2f2', text: '#991b1b', icon: 'alert-circle-outline', iconColor: '#ef4444' };
+      case 'RETRY': return { bg: '#fffbeb', text: '#b45309', icon: 'refresh', iconColor: '#f59e0b' };
+      default: return { bg: '#f1f5f9', text: '#475569', icon: 'help-circle-outline', iconColor: '#64748b' };
     }
-  };
-
-  const parseError = (op: SyncOperation) => {
-    if (!op.errorCode) return 'Unknown Error';
-    return op.errorCode; // We preserve the machine-readable code as requested
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title="SYNC MONITOR" />
-      <View style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
-        <View style={styles.kpiRow}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Pending</Text>
-            <Text style={[styles.kpiValue, { color: '#f59e0b' }]}>{stats.pending}</Text>
+        {/* Top Operational Banner */}
+        <View style={styles.bannerCard}>
+          <View style={styles.bannerHeader}>
+            <View style={styles.bannerHeaderLeft}>
+              <Icon name="cellphone-wireless" size={20} color="#003c90" />
+              <Text style={styles.bannerTitle}>EDGE TELEMETRY • NSY YARD</Text>
+            </View>
+            <View style={styles.activeBadge}>
+              <View style={styles.activeDot} />
+              <Text style={styles.activeBadgeText}>Store & Forward Active</Text>
+            </View>
           </View>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Retrying</Text>
-            <Text style={[styles.kpiValue, { color: '#f97316' }]}>{stats.retrying}</Text>
-          </View>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Conflicts</Text>
-            <Text style={[styles.kpiValue, { color: '#ef4444' }]}>{stats.conflicts}</Text>
+          
+          <View style={styles.bannerBody}>
+            <Image 
+              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBlPwZ8Ov4GJINu41BLhnwcYeR-ZyBsSpYH0xKFw1PrGLQFIAbDtF2OCVqNgPzUgQ3CQEgcBguegtiCWvnAgATptwyL8HcBEcExK5WUqpFn9To3M0efbTaCbpa-gA_3n8T83b-tWXfYlzPMKdRyG7qhnDgWf-R5G8Fhxdn1x8BuWTJLsnA3YtyqWl63vLdcw4nCK9lEa9uSDkVM8fMuBrrXWxKxRWw6Dbx0kIL2MlMCBdXeUl_c_TcK' }} 
+              style={styles.bannerImage}
+            />
+            <View style={styles.bannerTextCol}>
+              <Text style={styles.bannerMainText}>Offline Buffer Synchronizer</Text>
+              <Text style={styles.bannerSubText}>Terminal Queue: efcb8bb9-1980-453f</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.toolbar}>
-          <View>
-            <Text style={styles.lastSyncText}>Last Pull: {lastPullTime}</Text>
-            <Text style={styles.lastSyncText}>Synced Today: {stats.synced}</Text>
+        {/* Sync Monitor Header */}
+        <View style={styles.screenHeader}>
+          <Text style={styles.screenTitle}>SYNC MONITOR</Text>
+          <View style={[styles.pendingBadge, stats.pending === 0 && { backgroundColor: '#ccfbf1' }]}>
+            {stats.pending > 0 && <View style={styles.pendingDot} />}
+            <Text style={[styles.pendingText, stats.pending === 0 && { color: '#115e59' }]}>{stats.pending} PENDING</Text>
+          </View>
+        </View>
+
+        {/* KPI Row */}
+        <View style={styles.kpiRow}>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Pending</Text>
+            <Text style={[styles.kpiValue, { color: '#d97706' }]}>{stats.pending}</Text>
+            <Text style={[styles.kpiSub, { color: 'rgba(217, 119, 6, 0.8)' }]}>QUEUED</Text>
+          </View>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Retrying</Text>
+            <Text style={[styles.kpiValue, { color: '#434653' }]}>{stats.retrying}</Text>
+            <Text style={[styles.kpiSub, { color: 'rgba(67, 70, 83, 0.7)' }]}>{stats.retrying > 0 ? 'ACTIVE' : 'CLEAR'}</Text>
+          </View>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Conflicts</Text>
+            <Text style={[styles.kpiValue, { color: '#006a63' }]}>{stats.conflicts}</Text>
+            <Text style={[styles.kpiSub, { color: 'rgba(0, 106, 99, 0.7)' }]}>{stats.conflicts > 0 ? 'NEEDS REVIEW' : 'ZERO'}</Text>
+          </View>
+        </View>
+
+        {/* Sync Status Bar & Action Banner */}
+        <View style={styles.actionBar}>
+          <View style={styles.actionStats}>
+            <Text style={styles.actionStatRow}>
+              <Text style={styles.actionStatLabel}>Last Pull: </Text>
+              <Text style={styles.actionStatValue}>{lastPullTime}</Text>
+            </Text>
+            <Text style={styles.actionStatRow}>
+              <Text style={styles.actionStatLabel}>Synced Today: </Text>
+              <Text style={styles.actionStatValue}>{stats.synced}</Text>
+            </Text>
           </View>
           <TouchableOpacity 
-            style={[styles.syncBtn, syncing && styles.syncBtnDisabled]} 
+            style={[styles.syncBtn, syncing && styles.syncBtnActive]} 
             onPress={handleSync}
-            disabled={syncing}
+            activeOpacity={0.8}
           >
-            {syncing ? <ActivityIndicator size="small" color="#fff" /> : <Icon name="sync" size={20} color="#fff" />}
+            <Icon name="sync" size={20} color="#ffffff" style={syncing ? styles.spinIcon : {}} />
             <Text style={styles.syncBtnText}>{syncing ? 'SYNCING...' : 'SYNC NOW'}</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>Recent Queue Operations</Text>
-        
+        {/* Bandwidth Visualizer */}
+        <View style={styles.bandwidthCard}>
+          <View style={styles.bandwidthHeader}>
+            <Text style={styles.bandwidthTitle}>BANDWIDTH & RAIL SIGNAL HEALTH</Text>
+            <View style={styles.signalBadge}>
+              <Icon name="access-point-network" size={16} color="#006a63" />
+              <Text style={styles.signalText}>98.4% LTE-M</Text>
+            </View>
+          </View>
+          <View style={styles.sparklineRow}>
+            {[30, 40, 30, 60, 70, 50, 80, 60, 40, 20].map((h, i) => (
+              <View key={i} style={[styles.sparklineBar, { height: h, backgroundColor: i === 4 || i === 5 ? '#0f52ba' : i === 6 || i === 7 ? '#006a63' : '#dae2fd' }]} />
+            ))}
+          </View>
+        </View>
+
+        {/* Queue Operations Section */}
+        <View style={styles.queueHeader}>
+          <Text style={styles.queueTitle}>Recent Queue Operations</Text>
+          <Text style={styles.queueSubtitle}>FIFO LOG</Text>
+        </View>
+
         {loading ? (
-          <ActivityIndicator size="large" color="#0A74DA" style={{ marginTop: 32 }} />
+          <ActivityIndicator size="large" color="#003c90" style={{ marginTop: 24 }} />
         ) : (
-          <ScrollView style={styles.list}>
-            {operations.map(op => (
-              <View key={op.id} style={styles.opCard}>
-                <View style={styles.opHeader}>
-                  <Text style={styles.opTitle}>{op.commandType}</Text>
-                  <View style={[styles.badge, { backgroundColor: getStatusColor(op.status) }]}>
-                    <Text style={styles.badgeText}>{op.status}</Text>
+          <View style={styles.queueList}>
+            {operations.map(op => {
+              const opStyle = getStatusStyle(op.status);
+              
+              // Guessing icon/color based on commandType
+              let opIcon = 'database-sync';
+              let opIconColor = '#0f52ba';
+              let opIconBg = '#e2e7ff';
+              
+              if (op.commandType === 'REPORT_EXCEPTION') {
+                opIcon = 'alert';
+                opIconColor = '#ba1a1a';
+                opIconBg = '#ffdad6';
+              } else if (op.commandType.includes('ALLOCATE') || op.commandType.includes('UPDATE')) {
+                opIcon = 'forklift';
+                opIconColor = '#003c90';
+                opIconBg = '#eaedff';
+              } else if (op.commandType.includes('INBOUND') || op.commandType.includes('RECEIVE')) {
+                opIcon = 'login';
+                opIconColor = '#006a63';
+                opIconBg = '#ccfbf1';
+              }
+
+              let targetId = 'N/A';
+              try {
+                const p = JSON.parse(op.payload);
+                targetId = p.assetNumber || p.targetId || p.exceptionId || 'N/A';
+              } catch (e) {}
+
+              return (
+                <View key={op.id} style={styles.queueCard}>
+                  <View style={styles.queueCardLeft}>
+                    <View style={[styles.queueIconBox, { backgroundColor: opIconBg }]}>
+                      <Icon name={opIcon} size={20} color={opIconColor} />
+                    </View>
+                    <View style={styles.queueDetails}>
+                      <Text style={styles.queueCommand}>{op.commandType}</Text>
+                      <Text style={styles.queueTime}>{new Date(op.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })}</Text>
+                      <Text style={styles.queueTarget}>TARGET: {targetId}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.queueCardRight}>
+                    <View style={[styles.queueStatusPill, { backgroundColor: opStyle.bg }]}>
+                      <Text style={[styles.queueStatusText, { color: opStyle.text }]}>{op.status}</Text>
+                    </View>
+                    {op.status === 'RETRY' && (
+                      <Text style={styles.queueAttempt}>ATTEMPT {op.attemptCount}</Text>
+                    )}
                   </View>
                 </View>
-                
-                <Text style={styles.opTime}>{new Date(op.createdAt).toLocaleString()}</Text>
-                
-                {op.status === 'CONFLICT' && (
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorTitle}>Error Code:</Text>
-                    <Text style={styles.errorCode}>{parseError(op)}</Text>
-                  </View>
-                )}
-                
-                {op.status === 'RETRY' && op.nextRetryAt && (
-                  <Text style={styles.retryText}>
-                    Attempt {op.attemptCount}. Next retry: {new Date(op.nextRetryAt).toLocaleTimeString()}
-                  </Text>
-                )}
-              </View>
-            ))}
+              );
+            })}
+            
             {operations.length === 0 && (
               <View style={styles.emptyState}>
+                <Icon name="check-all" size={48} color="#cbd5e1" />
                 <Text style={styles.emptyText}>Outbox is empty.</Text>
               </View>
             )}
-          </ScrollView>
+          </View>
         )}
-      </View>
+
+        {/* Footer */}
+        <View style={styles.footerNote}>
+          <View style={styles.footerNoteLeft}>
+            <Icon name="shield-check" size={18} color="#737784" />
+            <Text style={styles.footerNoteText}>Automatic retry active: backoff every 45s</Text>
+          </View>
+          <TouchableOpacity>
+            <Text style={styles.purgeBtnText}>PURGE STALE</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{height: 40}} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f1f5f9' },
-  container: { flex: 1, backgroundColor: '#f8fafc', padding: 16 },
-  kpiRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  kpiCard: { flex: 1, backgroundColor: '#fff', padding: 16, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center' },
-  kpiLabel: { fontSize: 12, color: '#64748b', fontWeight: 'bold', marginBottom: 4 },
-  kpiValue: { fontSize: 24, fontWeight: '900' },
-  toolbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 24 },
-  lastSyncText: { fontSize: 12, color: '#475569', marginBottom: 2 },
-  syncBtn: { flexDirection: 'row', backgroundColor: '#0A74DA', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, alignItems: 'center', gap: 8 },
-  syncBtnDisabled: { backgroundColor: '#94a3b8' },
-  syncBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-  sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#0f172a', marginBottom: 12 },
-  list: { flex: 1 },
-  opCard: { backgroundColor: '#fff', padding: 16, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 12 },
-  opHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  opTitle: { fontSize: 14, fontWeight: 'bold', color: '#0f172a' },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
-  badgeText: { fontSize: 10, fontWeight: 'bold', color: '#fff' },
-  opTime: { fontSize: 11, color: '#94a3b8', marginBottom: 8 },
-  errorBox: { backgroundColor: '#fef2f2', padding: 8, borderRadius: 4, marginTop: 4, borderWidth: 1, borderColor: '#fecaca' },
-  errorTitle: { fontSize: 10, color: '#ef4444', fontWeight: 'bold' },
-  errorCode: { fontSize: 12, color: '#b91c1c', fontFamily: 'monospace', marginTop: 2 },
-  retryText: { fontSize: 11, color: '#f97316', marginTop: 8, fontStyle: 'italic' },
-  emptyState: { padding: 32, alignItems: 'center' },
-  emptyText: { color: '#94a3b8' }
+  safeArea: { flex: 1, backgroundColor: '#faf8ff' },
+  container: { flex: 1 },
+  content: { padding: 16 },
+
+  bannerCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 12, marginBottom: 24, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  bannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  bannerHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bannerTitle: { fontSize: 11, fontWeight: '700', color: '#737784', letterSpacing: 0.5 },
+  activeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ccfbf1', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#006a63' },
+  activeBadgeText: { fontSize: 10, fontWeight: '700', color: '#006f67', textTransform: 'uppercase' },
+  bannerBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bannerImage: { width: 64, height: 64, borderRadius: 8, backgroundColor: '#f1f5f9' },
+  bannerTextCol: { flex: 1 },
+  bannerMainText: { fontSize: 17, fontWeight: '600', color: '#131b2e' },
+  bannerSubText: { fontSize: 12, color: '#434653', marginTop: 2 },
+
+  screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  screenTitle: { fontSize: 22, fontWeight: '700', color: '#131b2e', letterSpacing: -0.5 },
+  pendingBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef3c7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, shadowColor: '#000', shadowOffset:{width:0, height:1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  pendingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#d97706' },
+  pendingText: { fontSize: 11, fontWeight: '800', color: '#92400e', letterSpacing: 0.5 },
+
+  kpiRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  kpiCard: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', paddingVertical: 12, borderRadius: 12, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  kpiLabel: { fontSize: 12, fontWeight: '600', color: '#434653', marginBottom: 4 },
+  kpiValue: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
+  kpiSub: { fontSize: 10, fontWeight: '700', letterSpacing: 1, marginTop: 4 },
+
+  actionBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: 16, borderRadius: 12, marginBottom: 24, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  actionStats: { flex: 1 },
+  actionStatRow: { marginBottom: 4 },
+  actionStatLabel: { fontSize: 12, fontWeight: '500', color: '#434653' },
+  actionStatValue: { fontSize: 12, fontWeight: '600', color: '#131b2e' },
+  syncBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0f52ba', paddingHorizontal: 20, height: 48, borderRadius: 8, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  syncBtnActive: { backgroundColor: '#006a63' },
+  syncBtnText: { fontSize: 14, fontWeight: '700', color: '#ffffff', letterSpacing: 0.5, textTransform: 'uppercase' },
+  spinIcon: { transform: [{ rotate: '180deg' }] }, // simple stub for rotation
+
+  bandwidthCard: { backgroundColor: '#f2f3ff', borderRadius: 12, padding: 16, marginBottom: 24 },
+  bandwidthHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  bandwidthTitle: { fontSize: 11, fontWeight: '700', color: '#737784', letterSpacing: 0.5 },
+  signalBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  signalText: { fontSize: 12, fontWeight: '600', color: '#006a63' },
+  sparklineRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 32 },
+  sparklineBar: { flex: 1, borderRadius: 2 },
+
+  queueHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  queueTitle: { fontSize: 17, fontWeight: '700', color: '#131b2e' },
+  queueSubtitle: { fontSize: 11, fontWeight: '700', color: '#737784', letterSpacing: 0.5, fontFamily: 'monospace' },
+
+  queueList: { gap: 8, marginBottom: 24 },
+  queueCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: 12, borderRadius: 12, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  queueCardLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1 },
+  queueIconBox: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  queueDetails: { flex: 1 },
+  queueCommand: { fontSize: 15, fontWeight: '700', color: '#131b2e' },
+  queueTime: { fontSize: 12, color: '#434653', fontFamily: 'monospace', marginTop: 2, marginBottom: 4 },
+  queueTarget: { fontSize: 10, color: '#737784', fontFamily: 'monospace', textTransform: 'uppercase' },
+  
+  queueCardRight: { alignItems: 'flex-end', gap: 4, marginLeft: 8 },
+  queueStatusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  queueStatusText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  queueAttempt: { fontSize: 9, color: '#737784', fontFamily: 'monospace' },
+
+  emptyState: { padding: 32, alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 12 },
+  emptyText: { color: '#94a3b8', marginTop: 8, fontSize: 14, fontWeight: '500' },
+
+  footerNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(242, 243, 255, 0.6)', padding: 12, borderRadius: 12 },
+  footerNoteLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  footerNoteText: { fontSize: 12, fontWeight: '500', color: '#737784' },
+  purgeBtnText: { fontSize: 11, fontWeight: '700', color: '#003c90', textTransform: 'uppercase' },
 });

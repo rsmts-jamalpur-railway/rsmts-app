@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../../context/AuthContext';
 import { YardRepository } from '../../../database/v2/repositories/YardRepository';
@@ -128,7 +128,9 @@ export default function AllocateScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Icon name="arrow-left" size={24} color="#0f172a" />
@@ -281,11 +283,17 @@ export default function AllocateScreen({ navigation }: any) {
           {isSubmitting ? 'RECORDING ALLOCATION...' : `ALLOCATE TO ${selectedShop}`}
         </Text>
       </TouchableOpacity>
-    </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',

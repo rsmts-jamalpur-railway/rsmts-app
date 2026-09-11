@@ -2,6 +2,7 @@ import { database } from '../index';
 import Asset from '../models/Asset';
 import Exception from '../models/Exception';
 import { uuidv4, prepareSyncOperation } from './utils';
+import { SyncEngine } from '../sync';
 
 let db = database;
 
@@ -51,6 +52,7 @@ export class ExceptionRepository {
       await db.batch(exceptionCreate, assetUpdate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 }

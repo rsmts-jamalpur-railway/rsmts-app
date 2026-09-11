@@ -9,6 +9,7 @@ import MovementLog from '../../database/v2/models/MovementLog';
 import Exception from '../../database/v2/models/Exception';
 import { useAuth } from '../../context/AuthContext';
 import { prepareSyncOperation, uuidv4 } from '../../database/v2/repositories/utils';
+import { SyncEngine } from '../../database/v2/sync';
 
 type AdminTab = 'EXCEPTIONS' | 'PERSONAS' | 'CAPACITIES' | 'ALL_ASSETS';
 
@@ -138,6 +139,7 @@ function AdminGodModeComponent({ assets = [], exceptions = [], recentLogs = [] }
 
         await database.batch(assetUpdate, movementLogCreate, syncOperation);
       });
+      SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
 
       setRouteModal(false);
       setSelectedAsset(null);

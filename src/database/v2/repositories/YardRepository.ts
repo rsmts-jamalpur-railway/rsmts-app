@@ -3,6 +3,7 @@ import { database } from '../index';
 import Asset from '../models/Asset';
 import MovementLog from '../models/MovementLog';
 import { uuidv4, prepareSyncOperation } from './utils';
+import { SyncEngine } from '../sync';
 
 let db = database;
 
@@ -103,6 +104,7 @@ export class YardRepository {
       await db.batch(assetCreate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -160,6 +162,7 @@ export class YardRepository {
       await db.batch(assetUpdate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -213,6 +216,7 @@ export class YardRepository {
       await db.batch(assetUpdate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -282,6 +286,7 @@ export class YardRepository {
       await db.batch(assetUpdate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 }

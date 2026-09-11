@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Modal, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../../context/AuthContext';
 import { YardRepository } from '../../../database/v2/repositories/YardRepository';
@@ -96,8 +96,10 @@ export default function NSYOutScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.container}>
+          <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Icon name="arrow-left" size={24} color="#0f172a" />
         </TouchableOpacity>
@@ -259,11 +261,17 @@ export default function NSYOutScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',

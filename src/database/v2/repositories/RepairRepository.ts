@@ -4,6 +4,7 @@ import Asset from '../models/Asset';
 import MovementLog from '../models/MovementLog';
 import RepairHold from '../models/RepairHold';
 import { uuidv4, prepareSyncOperation } from './utils';
+import { SyncEngine } from '../sync';
 
 let db = database;
 
@@ -122,6 +123,7 @@ export class RepairRepository {
       await db.batch(assetUpdate, repairCycleCreate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -181,6 +183,7 @@ export class RepairRepository {
       await db.batch(assetUpdate, cycleUpdate, holdCreate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -247,6 +250,7 @@ export class RepairRepository {
       await db.batch(...batches);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -297,6 +301,7 @@ export class RepairRepository {
       await db.batch(assetUpdate, cycleUpdate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -326,6 +331,7 @@ export class RepairRepository {
       });
       await db.batch(assetUpdate, movementLogCreate, syncOperation);
     });
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -358,6 +364,7 @@ export class RepairRepository {
       });
       await db.batch(assetUpdate, movementLogCreate, syncOperation);
     });
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 }

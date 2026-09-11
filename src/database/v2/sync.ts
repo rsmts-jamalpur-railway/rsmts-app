@@ -48,7 +48,8 @@ export class SyncEngine {
             throw new Error(`Pull failed: ${response.statusText}`);
           }
 
-          const { changes, next_revision, has_more } = await response.json();
+          const jsonResponse = await response.json();
+          const { changes, next_revision, has_more } = jsonResponse.data || jsonResponse;
 
           // INTERCEPTION LOGIC: Map Server UUIDs to Local WatermelonDB IDs
           

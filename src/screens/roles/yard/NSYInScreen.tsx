@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../../context/AuthContext';
 import { YardRepository } from '../../../database/v2/repositories/YardRepository';
 import { ASSET_CATEGORIES, validateAssetNumber, detectAssetCategory, decodeWagonNumber } from '../../../utils/assetValidation';
 
 const RAILWAY_ZONES = [
-  { code: 'ER', name: 'Eastern (ER - Jamalpur)' },
+  { code: 'ER', name: 'Eastern (ER)' },
   { code: 'ECR', name: 'East Central (ECR)' },
   { code: 'NR', name: 'Northern (NR)' },
   { code: 'SER', name: 'South Eastern (SER)' },
@@ -38,13 +38,11 @@ export default function NSYInScreen({ navigation }: any) {
   const [remarks, setRemarks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Real-time validation computation
   const validation = useMemo(() => {
     if (!assetNumber.trim()) return null;
     return validateAssetNumber(assetNumber, category);
   }, [assetNumber, category]);
 
-  // Decode wagon if available
   const wagonBreakdown = useMemo(() => {
     if (category === 'WAGON' && assetNumber.trim().length === 11) {
       return decodeWagonNumber(assetNumber.trim());
@@ -56,7 +54,6 @@ export default function NSYInScreen({ navigation }: any) {
     const cleaned = text.trim();
     setAssetNumber(cleaned);
     
-    // Auto-detect category if user types a pattern
     if (!assetNumber && cleaned.length >= 3) {
       const detected = detectAssetCategory(cleaned);
       if (detected !== 'UNKNOWN' && detected !== category) {
@@ -64,7 +61,6 @@ export default function NSYInScreen({ navigation }: any) {
       }
     }
 
-    // Auto-detect railway zone from 11-digit wagon if applicable
     if (cleaned.length >= 4) {
       const rwCode = cleaned.substring(2, 4);
       if (rwCode === '02') setSelectedRailway('ER');
@@ -125,457 +121,265 @@ export default function NSYInScreen({ navigation }: any) {
   const currentConfig = ASSET_CATEGORIES[category];
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="arrow-left" size={24} color="#0f172a" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>NEW NSY INTAKE</Text>
-      </View>
-
-      {/* Category Selection Chips */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Rolling Stock Category *</Text>
-        <View style={styles.chipRow}>
-          {(['WAGON', 'LOCO', 'CRANE', 'TOWER_CAR'] as const).map((cat) => {
-            const config = ASSET_CATEGORIES[cat];
-            const isSelected = category === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
-                onPress={() => setCategory(cat)}
-              >
-                <Icon
-                  name={config.icon}
-                  size={18}
-                  color={isSelected ? '#FFFFFF' : '#475569'}
-                />
-                <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
-                  {config.label.split(' ')[0]}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <Text style={styles.categoryDesc}>{currentConfig.description}</Text>
-      </View>
-
-      {/* Asset Number Input */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Asset Number *</Text>
-        <TextInput
-          style={[
-            styles.input,
-            validation && (validation.isValid ? styles.inputValid : styles.inputInvalid)
-          ]}
-          value={assetNumber}
-          onChangeText={handleAssetChange}
-          placeholder={currentConfig.placeholder}
-          keyboardType={category === 'WAGON' || category === 'LOCO' || category === 'CRANE' ? 'numeric' : 'default'}
-          autoCapitalize="characters"
-        />
-
-        {/* Validation Status Message */}
-        {validation && (
-          <View style={[styles.valBadge, validation.isValid ? styles.valBadgeSuccess : styles.valBadgeError]}>
-            <Icon
-              name={validation.isValid ? 'check-circle' : 'alert-circle'}
-              size={16}
-              color={validation.isValid ? '#059669' : '#dc2626'}
-            />
-            <Text style={[styles.valText, validation.isValid ? styles.valTextSuccess : styles.valTextError]}>
-              {validation.message}
-            </Text>
-          </View>
-        )}
-
-        {/* Auto-fix Suggestion */}
-        {validation?.autoFix && (
-          <TouchableOpacity
-            style={styles.autoFixBtn}
-            onPress={() => applyAutoFix(validation.autoFix!)}
-          >
-            <Icon name="wand" size={16} color="#1d4ed8" />
-            <Text style={styles.autoFixText}>Use valid number: {validation.autoFix}</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{top:10,bottom:10,left:10,right:10}}>
+            <Icon name="arrow-left" size={24} color="#131b2e" />
           </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Decoded Wagon Metadata Card */}
-      {wagonBreakdown && (
-        <View style={styles.breakdownCard}>
-          <View style={styles.breakdownHeader}>
-            <Icon name="train-car" size={20} color="#0369a1" />
-            <Text style={styles.breakdownTitle}>Indian Railways Wagon Specifications</Text>
-          </View>
-          <View style={styles.breakdownGrid}>
-            <View style={styles.breakdownItem}>
-              <Text style={styles.breakdownLabel}>WAGON TYPE</Text>
-              <Text style={styles.breakdownValue}>{wagonBreakdown.typeName}</Text>
-            </View>
-            <View style={styles.breakdownItem}>
-              <Text style={styles.breakdownLabel}>OWNING ZONE</Text>
-              <Text style={styles.breakdownValue}>{wagonBreakdown.railwayName}</Text>
-            </View>
-            <View style={styles.breakdownItem}>
-              <Text style={styles.breakdownLabel}>MANUFACTURE YEAR</Text>
-              <Text style={styles.breakdownValue}>{wagonBreakdown.manufactureYear}</Text>
-            </View>
-            <View style={styles.breakdownItem}>
-              <Text style={styles.breakdownLabel}>SERIAL NUMBER</Text>
-              <Text style={styles.breakdownValue}>#{wagonBreakdown.serialNumber}</Text>
-            </View>
-            <View style={styles.breakdownItem}>
-              <Text style={styles.breakdownLabel}>CHECK DIGIT</Text>
-              <Text style={[
-                styles.breakdownValue, 
-                { color: wagonBreakdown.isValidCheckDigit ? '#059669' : '#dc2626', fontWeight: 'bold' }
-              ]}>
-                {wagonBreakdown.enteredCheckDigit} {wagonBreakdown.isValidCheckDigit ? '(Valid ✓)' : `(Expected: ${wagonBreakdown.calculatedCheckDigit})`}
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.headerTitle}>NSY INTAKE</Text>
+          <View style={{width: 40}} />
         </View>
-      )}
 
-      {/* Owning Railway Zone Picker */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Owning Railway Zone *</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          <View style={styles.railwayRow}>
-            {RAILWAY_ZONES.map((rz) => {
-              const isSelected = selectedRailway === rz.code;
-              return (
-                <TouchableOpacity
-                  key={rz.code}
-                  style={[styles.railwayChip, isSelected && styles.railwayChipActive]}
-                  onPress={() => setSelectedRailway(rz.code)}
-                >
-                  <Text style={[styles.railwayCode, isSelected && styles.railwayTextActive]}>{rz.code}</Text>
-                  <Text style={[styles.railwayName, isSelected && styles.railwayTextActive]}>{rz.name.split(' ')[0]}</Text>
-                </TouchableOpacity>
-              );
-            })}
+        <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          
+          <View style={styles.bannerCard}>
+            <View style={styles.bannerHeader}>
+              <View style={styles.bannerHeaderLeft}>
+                <Icon name="train-car" size={20} color="#003c90" />
+                <Text style={styles.bannerTitle}>ROLLING STOCK REGISTRATION</Text>
+              </View>
+              <View style={styles.activeBadge}>
+                <View style={styles.activeDot} />
+                <Text style={styles.activeBadgeText}>Intake Mode</Text>
+              </View>
+            </View>
+            <Text style={styles.bannerDesc}>Record arrival of rolling stock into NSY Yard limits. Assets will be available for allocation after successful intake.</Text>
           </View>
-        </ScrollView>
-      </View>
 
-      {/* Track Line Intake Picker */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Intake Track / Line *</Text>
-        <View style={styles.trackGrid}>
-          {TRACK_LINES.map((track) => {
-            const isSelected = selectedTrack === track;
-            return (
-              <TouchableOpacity
-                key={track}
-                style={[styles.trackChip, isSelected && styles.trackChipActive]}
-                onPress={() => setSelectedTrack(track)}
-              >
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>ASSET CATEGORY</Text>
+            <View style={styles.chipRow}>
+              {(['WAGON', 'LOCO', 'CRANE', 'TOWER_CAR'] as const).map((cat) => {
+                const config = ASSET_CATEGORIES[cat];
+                const isSelected = category === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
+                    onPress={() => setCategory(cat)}
+                  >
+                    <Icon
+                      name={config.icon}
+                      size={20}
+                      color={isSelected ? '#0f52ba' : '#737784'}
+                    />
+                    <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
+                      {config.label.split(' ')[0]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>ASSET NUMBER <Text style={styles.requiredAsterisk}>*</Text></Text>
+            <View style={[
+              styles.inputContainer,
+              validation && (validation.isValid ? styles.inputValid : styles.inputInvalid)
+            ]}>
+              <TextInput
+                style={styles.input}
+                value={assetNumber}
+                onChangeText={handleAssetChange}
+                placeholder={currentConfig.placeholder}
+                placeholderTextColor="#94a3b8"
+                keyboardType={category === 'WAGON' || category === 'LOCO' || category === 'CRANE' ? 'numeric' : 'default'}
+                autoCapitalize="characters"
+              />
+              {validation && (
                 <Icon
-                  name="railroad-light"
-                  size={16}
-                  color={isSelected ? '#FFFFFF' : '#475569'}
+                  name={validation.isValid ? 'check-circle' : 'alert-circle'}
+                  size={24}
+                  color={validation.isValid ? '#006a63' : '#ba1a1a'}
+                  style={{marginRight: 16}}
                 />
-                <Text style={[styles.trackChipText, isSelected && styles.trackChipTextActive]}>
-                  {track}
-                </Text>
+              )}
+            </View>
+            {validation && !validation.isValid && (
+              <Text style={styles.errorText}>{validation.message}</Text>
+            )}
+            
+            {validation?.autoFix && (
+              <TouchableOpacity style={styles.autoFixBtn} onPress={() => applyAutoFix(validation.autoFix!)}>
+                <Icon name="wand" size={16} color="#0f52ba" />
+                <Text style={styles.autoFixText}>Use valid number: {validation.autoFix}</Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+            )}
+          </View>
 
-      {/* Rake / Train Number */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Inbound Rake / Train Number (Optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. RAKE-ECR-9021 / TR-13401"
-          placeholderTextColor="#94a3b8"
-          value={rakeNumber}
-          onChangeText={setRakeNumber}
-          autoCapitalize="characters"
-        />
-      </View>
+          {wagonBreakdown && (
+            <View style={styles.breakdownCard}>
+              <View style={styles.breakdownHeader}>
+                <Icon name="information" size={18} color="#0f52ba" />
+                <Text style={styles.breakdownTitle}>Wagon Specifications</Text>
+              </View>
+              <View style={styles.breakdownGrid}>
+                <View style={styles.breakdownItem}>
+                  <Text style={styles.breakdownLabel}>TYPE</Text>
+                  <Text style={styles.breakdownValue}>{wagonBreakdown.typeName}</Text>
+                </View>
+                <View style={styles.breakdownItem}>
+                  <Text style={styles.breakdownLabel}>ZONE</Text>
+                  <Text style={styles.breakdownValue}>{wagonBreakdown.railwayName}</Text>
+                </View>
+                <View style={styles.breakdownItem}>
+                  <Text style={styles.breakdownLabel}>YEAR</Text>
+                  <Text style={styles.breakdownValue}>{wagonBreakdown.manufactureYear}</Text>
+                </View>
+                <View style={styles.breakdownItem}>
+                  <Text style={styles.breakdownLabel}>S/N</Text>
+                  <Text style={styles.breakdownValue}>#{wagonBreakdown.serialNumber}</Text>
+                </View>
+              </View>
+            </View>
+          )}
 
-      {/* Remarks */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Intake Notes & Condition</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Physical damage notes, load condition, wheel defects..."
-          placeholderTextColor="#94a3b8"
-          value={remarks}
-          onChangeText={setRemarks}
-          multiline
-          numberOfLines={3}
-        />
-      </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>OWNING RAILWAY ZONE</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll} contentContainerStyle={{gap: 8}}>
+              {RAILWAY_ZONES.map((rz) => {
+                const isSelected = selectedRailway === rz.code;
+                return (
+                  <TouchableOpacity
+                    key={rz.code}
+                    style={[styles.railwayChip, isSelected && styles.railwayChipActive]}
+                    onPress={() => setSelectedRailway(rz.code)}
+                  >
+                    <Text style={[styles.railwayCode, isSelected && styles.railwayTextActive]}>{rz.code}</Text>
+                    <Text style={[styles.railwayName, isSelected && styles.railwayTextActive]}>{rz.name.split(' ')[0]}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
 
-      {/* Submit Button */}
-      <TouchableOpacity 
-        style={[
-          styles.submitBtn, 
-          (isSubmitting || (validation && !validation.isValid)) && styles.submitBtnDisabled
-        ]} 
-        onPress={handleSave}
-        disabled={isSubmitting || (validation ? !validation.isValid : false)}
-      >
-        <Icon name="content-save" size={20} color="#FFFFFF" />
-        <Text style={styles.submitBtnText}>{isSubmitting ? 'RECORDING...' : 'RECORD NSY ARRIVAL (OFFLINE)'}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>INTAKE TRACK / LINE <Text style={styles.requiredAsterisk}>*</Text></Text>
+            <View style={styles.trackGrid}>
+              {TRACK_LINES.map((track) => {
+                const isSelected = selectedTrack === track;
+                return (
+                  <TouchableOpacity
+                    key={track}
+                    style={[styles.trackChip, isSelected && styles.trackChipActive]}
+                    onPress={() => setSelectedTrack(track)}
+                  >
+                    <Icon name="railroad-light" size={18} color={isSelected ? '#006a63' : '#737784'} />
+                    <Text style={[styles.trackChipText, isSelected && styles.trackChipTextActive]}>{track}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>INBOUND RAKE / TRAIN NUMBER</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. RAKE-ECR-9021 / TR-13401"
+                placeholderTextColor="#94a3b8"
+                value={rakeNumber}
+                onChangeText={setRakeNumber}
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>INTAKE NOTES & CONDITION</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Physical damage notes, load condition..."
+                placeholderTextColor="#94a3b8"
+                value={remarks}
+                onChangeText={setRemarks}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.submitBtn, (isSubmitting || (validation && !validation.isValid)) && styles.submitBtnDisabled]} 
+            onPress={handleSave}
+            disabled={isSubmitting || (validation ? !validation.isValid : false)}
+            activeOpacity={0.8}
+          >
+            <Icon name="arrow-down-box" size={24} color="#ffffff" />
+            <Text style={styles.submitBtnText}>{isSubmitting ? 'RECORDING...' : 'REGISTER INBOUND ASSET'}</Text>
+          </TouchableOpacity>
+          <View style={{height: 40}} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  backBtn: {
-    padding: 8,
-    marginRight: 8,
-    marginLeft: -8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  formGroup: {
-    marginBottom: 18,
-  },
-  label: {
-    fontSize: 13,
-    color: '#334155',
-    marginBottom: 8,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-    marginBottom: 6,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-  },
-  categoryChipActive: {
-    backgroundColor: '#0A74DA',
-    borderColor: '#0A74DA',
-  },
-  categoryChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  categoryChipTextActive: {
-    color: '#FFFFFF',
-  },
-  categoryDesc: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  inputValid: {
-    borderColor: '#10b981',
-    backgroundColor: '#f0fdf4',
-  },
-  inputInvalid: {
-    borderColor: '#f87171',
-    backgroundColor: '#fef2f2',
-  },
-  valBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    padding: 10,
-    borderRadius: 6,
-  },
-  valBadgeSuccess: {
-    backgroundColor: '#dcfce7',
-  },
-  valBadgeError: {
-    backgroundColor: '#fee2e2',
-  },
-  valText: {
-    fontSize: 12,
-    fontWeight: '500',
-    flex: 1,
-  },
-  valTextSuccess: {
-    color: '#166534',
-  },
-  valTextError: {
-    color: '#991b1b',
-  },
-  autoFixBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#eff6ff',
-    borderWidth: 1,
-    borderColor: '#bfdbfe',
-    borderRadius: 6,
-    padding: 8,
-    marginTop: 8,
-  },
-  autoFixText: {
-    fontSize: 12,
-    color: '#1d4ed8',
-    fontWeight: '600',
-  },
-  breakdownCard: {
-    backgroundColor: '#f0f9ff',
-    borderWidth: 1,
-    borderColor: '#bae6fd',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 18,
-  },
-  breakdownHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0f2fe',
-  },
-  breakdownTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0369a1',
-  },
-  breakdownGrid: {
-    gap: 6,
-  },
-  breakdownItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  breakdownLabel: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  breakdownValue: {
-    fontSize: 12,
-    color: '#0f172a',
-    fontWeight: '600',
-  },
-  horizontalScroll: {
-    marginBottom: 4,
-  },
-  railwayRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  railwayChip: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    alignItems: 'center',
-    minWidth: 70,
-  },
-  railwayChipActive: {
-    backgroundColor: '#0A74DA',
-    borderColor: '#0A74DA',
-  },
-  railwayCode: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#334155',
-  },
-  railwayName: {
-    fontSize: 10,
-    color: '#64748b',
-  },
-  railwayTextActive: {
-    color: '#FFFFFF',
-  },
-  trackGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  trackChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  trackChipActive: {
-    backgroundColor: '#1e293b',
-    borderColor: '#1e293b',
-  },
-  trackChipText: {
-    fontSize: 12,
-    color: '#475569',
-    fontWeight: '600',
-  },
-  trackChipTextActive: {
-    color: '#FFFFFF',
-  },
-  textArea: {
-    minHeight: 70,
-    textAlignVertical: 'top',
-  },
-  submitBtn: {
-    backgroundColor: '#0A74DA',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 10,
-    marginTop: 8,
-    marginBottom: 36,
-    gap: 8,
-  },
-  submitBtnDisabled: {
-    opacity: 0.6,
-  },
-  submitBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  }
+  safeArea: { flex: 1, backgroundColor: '#f8fafc' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 20 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#131b2e', letterSpacing: -0.5 },
+  
+  container: { flex: 1 },
+  content: { padding: 16 },
+
+  bannerCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, marginBottom: 24, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  bannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  bannerHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bannerTitle: { fontSize: 11, fontWeight: '700', color: '#737784', letterSpacing: 0.5 },
+  activeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ccfbf1', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#006a63' },
+  activeBadgeText: { fontSize: 10, fontWeight: '700', color: '#006f67', textTransform: 'uppercase' },
+  bannerDesc: { fontSize: 13, color: '#434653', lineHeight: 20 },
+
+  formGroup: { marginBottom: 24 },
+  label: { fontSize: 11, fontWeight: '700', color: '#737784', letterSpacing: 0.5, marginBottom: 8 },
+  requiredAsterisk: { color: '#ba1a1a' },
+
+  chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  categoryChip: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, flex: 1, minWidth: '45%' },
+  categoryChipActive: { backgroundColor: '#f2f3ff', borderColor: '#0f52ba' },
+  categoryChipText: { fontSize: 14, fontWeight: '600', color: '#434653' },
+  categoryChipTextActive: { color: '#0f52ba' },
+
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, overflow: 'hidden' },
+  inputValid: { borderColor: '#006a63', backgroundColor: '#f0fdfa' },
+  inputInvalid: { borderColor: '#ba1a1a', backgroundColor: '#fffbfa' },
+  input: { flex: 1, fontSize: 16, color: '#131b2e', padding: 16 },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
+  
+  errorText: { color: '#ba1a1a', fontSize: 12, marginTop: 4, fontWeight: '500' },
+  autoFixBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f2f3ff', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginTop: 8 },
+  autoFixText: { fontSize: 12, fontWeight: '600', color: '#0f52ba' },
+
+  breakdownCard: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 16, marginBottom: 24 },
+  breakdownHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  breakdownTitle: { fontSize: 13, fontWeight: '700', color: '#0f52ba', letterSpacing: 0.5, textTransform: 'uppercase' },
+  breakdownGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  breakdownItem: { width: '45%' },
+  breakdownLabel: { fontSize: 10, fontWeight: '700', color: '#737784', letterSpacing: 0.5, marginBottom: 2 },
+  breakdownValue: { fontSize: 14, fontWeight: '600', color: '#131b2e' },
+
+  horizontalScroll: { overflow: 'visible' },
+  railwayRow: { flexDirection: 'row', gap: 8 },
+  railwayChip: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center', minWidth: 80 },
+  railwayChipActive: { backgroundColor: '#131b2e', borderColor: '#131b2e' },
+  railwayCode: { fontSize: 14, fontWeight: '700', color: '#131b2e', marginBottom: 2 },
+  railwayName: { fontSize: 10, color: '#737784', fontWeight: '500' },
+  railwayTextActive: { color: '#ffffff' },
+
+  trackGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  trackChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, minWidth: '45%', flex: 1 },
+  trackChipActive: { backgroundColor: '#ccfbf1', borderColor: '#006a63' },
+  trackChipText: { fontSize: 13, fontWeight: '600', color: '#434653' },
+  trackChipTextActive: { color: '#006a63' },
+
+  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#0f52ba', borderRadius: 12, paddingVertical: 16, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  submitBtnDisabled: { backgroundColor: '#94a3b8' },
+  submitBtnText: { fontSize: 15, fontWeight: '700', color: '#ffffff', letterSpacing: 0.5 },
 });

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -94,7 +94,9 @@ function HeaderBase({ title, onBack, onSync, pendingOperations = [] }: HeaderPro
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <View style={styles.topRow}>
-        <Text style={styles.brandText}>RSMTS</Text>
+        <View style={styles.logoContainer}>
+          <Image source={require('../assets/logo_bg_removed.png')} style={styles.logoImage} resizeMode="contain" />
+        </View>
         
         <View style={styles.rightControls}>
           {isSuperUser && (
@@ -162,6 +164,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0f172a',
     letterSpacing: 0.5,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoImage: {
+    height: 28,
+    width: 28,
+    borderRadius: 14,
   },
   rightControls: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import api from '../../services/api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -74,7 +74,8 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>RSMTS Login</Text>
+          <Image source={require('../../assets/logo_bg_removed.png')} style={{width: 80, height: 80, marginBottom: 16}} resizeMode="contain" />
+          <Text style={styles.title}>Login</Text>
           <Text style={styles.subtitle}>Jamalpur Workshop Operations</Text>
 
           {/* Quick Demo Fill Chips — DEV ONLY */}

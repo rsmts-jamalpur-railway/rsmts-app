@@ -8,6 +8,7 @@ import FitCertificate from '../models/FitCertificate';
 import Exception from '../models/Exception';
 import MovementLog from '../models/MovementLog';
 import { uuidv4, prepareSyncOperation } from './utils';
+import { SyncEngine } from '../sync';
 
 let db = database;
 
@@ -239,6 +240,7 @@ export class QARepository {
       await db.batch(...batchOps);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 }

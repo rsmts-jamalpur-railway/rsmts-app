@@ -12,8 +12,11 @@ import DatabaseProvider from '@nozbe/watermelondb/react/DatabaseProvider';
 import { database } from './src/database';
 import RootNavigator from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/context/AuthContext';
+import { useNetworkSync } from './src/hooks/useNetworkSync';
 
 function App() {
+  useNetworkSync();
+
   return (
     <SafeAreaProvider>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />

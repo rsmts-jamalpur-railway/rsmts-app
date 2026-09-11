@@ -3,6 +3,7 @@ import ManufacturingOrder from '../models/ManufacturingOrder';
 import Asset from '../models/Asset';
 import MovementLog from '../models/MovementLog';
 import { uuidv4, prepareSyncOperation } from './utils';
+import { SyncEngine } from '../sync';
 
 let db = database;
 
@@ -66,6 +67,7 @@ export class ManufacturingRepository {
       await db.batch(assetUpdate, orderCreate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 
@@ -120,6 +122,7 @@ export class ManufacturingRepository {
       await db.batch(assetUpdate, orderUpdate, movementLogCreate, syncOperation);
     });
 
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
     return clientOperationId;
   }
 }
