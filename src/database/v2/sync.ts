@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import SyncOperation from './models/SyncOperation';
 import { Q } from '@nozbe/watermelondb';
 import { API_BASE_URL } from '../../config';
-import { DeviceEventEmitter } from 'react-native';
 
 const BASE_URL = API_BASE_URL;
 const SYNC_CURSOR_KEY = '@rsmts_sync_cursor';
@@ -33,7 +32,7 @@ export class SyncEngine {
       // ======================================================================
       await synchronize({
         database,
-        
+
         pullChanges: async ({ lastPulledAt, schemaVersion, migration }) => {
           const storedCursor = await AsyncStorage.getItem(SYNC_CURSOR_KEY);
           const cursor = storedCursor || '0';
@@ -53,17 +52,17 @@ export class SyncEngine {
           const { changes, next_revision, has_more } = jsonResponse.data || jsonResponse;
 
           // INTERCEPTION LOGIC: Map Server UUIDs to Local WatermelonDB IDs
-          
+
           for (const tableName of Object.keys(changes)) {
             const tableChanges = changes[tableName];
-            
+
             try {
               // 1. Process CREATED (map via client_operation_id)
               const clientOpIds = tableChanges.created.map((r: any) => r.client_operation_id).filter(Boolean);
-              const localRecordsByOp = clientOpIds.length > 0 
+              const localRecordsByOp = clientOpIds.length > 0
                 ? await database.collections.get(tableName).query(
-                    Q.where('client_operation_id', Q.oneOf(clientOpIds))
-                  ).fetch()
+                  Q.where('client_operation_id', Q.oneOf(clientOpIds))
+                ).fetch()
                 : [];
 
               const opIdToLocalId = new Map();
@@ -77,47 +76,47 @@ export class SyncEngine {
               for (const record of tableChanges.created) {
                 const localId = opIdToLocalId.get(record.client_operation_id);
                 record.server_id = record.id; // Always preserve backend UUID in server_id
-                
+
                 if (localId) {
-                  record.id = localId; 
+                  record.id = localId;
                   tableChanges.updated.push(record);
                 } else {
                   newCreated.push(record);
                 }
               }
               tableChanges.created = newCreated;
-              
+
               // 2. Process UPDATED (map via server_id)
-              const serverIds = tableChanges.updated.map((r: any) => r.server_id); 
+              const serverIds = tableChanges.updated.map((r: any) => r.server_id || r.id);
               const localRecordsByServerId = serverIds.length > 0
                 ? await database.collections.get(tableName).query(
-                    Q.where('server_id', Q.oneOf(serverIds))
-                  ).fetch()
+                  Q.where('server_id', Q.oneOf(serverIds))
+                ).fetch()
                 : [];
-                
+
               const serverIdToLocalId = new Map();
               for (const l of localRecordsByServerId as any[]) {
                 if (l.serverId) {
                   serverIdToLocalId.set(l.serverId, l.id);
                 }
               }
-              
+
               for (const record of tableChanges.updated) {
                 if (!record.server_id) record.server_id = record.id;
-                
+
                 const localId = serverIdToLocalId.get(record.server_id);
                 if (localId) {
-                  record.id = localId;
+                  record.id = localId; // Swap backend ID with local WatermelonDB ID
                 }
               }
-              
+
             } catch (e) {
               console.warn(`Interception mapping failed for ${tableName}, skipping.`, e);
             }
           }
 
           (SyncEngine as any)._nextRevision = next_revision;
-          return { changes, timestamp: Date.now() }; 
+          return { changes, timestamp: Date.now() };
         },
 
         pushChanges: async ({ changes, lastPulledAt }) => {
@@ -126,23 +125,18 @@ export class SyncEngine {
 
         migrationsEnabledAtVersion: 6,
       });
-      
+
       if ((SyncEngine as any)._nextRevision) {
         await AsyncStorage.setItem(SYNC_CURSOR_KEY, (SyncEngine as any)._nextRevision.toString());
       }
-      
+
     } catch (error: any) {
       console.error('Sync failed:', error);
-      if (error?.message?.includes('401') || error?.status === 401 || error?.message?.includes('Unauthorized')) {
+      if (error?.message?.includes('401') || error?.status === 401) {
         console.warn('Authentication failed. Queue paused until re-auth.');
-        await AsyncStorage.multiRemove([
-          '@Auth:token', '@Auth:role', '@Auth:roles', '@Auth:userId',
-          '@Auth:employeeId', '@Auth:userName', '@Auth:assignedLocationId', '@Auth:permissions'
-        ]).catch(() => {
-           // Fallback if multiRemove is not supported
-           AsyncStorage.removeItem('@Auth:token');
+        import('react-native').then(({ DeviceEventEmitter }) => {
+          DeviceEventEmitter.emit('AUTH_SESSION_EXPIRED');
         });
-        DeviceEventEmitter.emit('AUTH_SESSION_EXPIRED');
       }
       throw error;
     } finally {
@@ -156,7 +150,7 @@ export class SyncEngine {
    */
   private static async processOutbox(token: string) {
     const now = Date.now();
-    
+
     const pendingOps = await database.collections.get<SyncOperation>('sync_operations').query(
       Q.where('status', Q.oneOf(['PENDING', 'RETRY'])),
       Q.sortBy('created_at', Q.asc)
@@ -228,7 +222,7 @@ export class SyncEngine {
               'QA_INSPECTION': 'qa_inspections',
               'EXCEPTION': 'exceptions'
             };
-            
+
             const tableName = tableMap[success.entity];
             if (tableName) {
               const localRecords = await database.collections.get(tableName).query(
@@ -248,7 +242,7 @@ export class SyncEngine {
               try {
                 const payload = JSON.parse(op.payload || '{}');
                 const localAssetId = payload.local_asset_id || payload.asset_id; // Check both depending on the dto
-                
+
                 if (localAssetId) {
                   // The outbox payload explicitly references a local asset ID
                   const asset = await database.collections.get('assets').find(localAssetId);
@@ -258,16 +252,16 @@ export class SyncEngine {
                     }));
                   }
                 } else if (success.entity === 'MANUFACTURING_CYCLE') {
-                   // For MANUFACTURING_START, the payload has asset_number, we can find the offline asset by asset_number
-                   const assets = await database.collections.get('assets').query(
-                     Q.where('asset_number', payload.asset_number),
-                     Q.where('server_id', null) // Only update if it doesn't already have one
-                   ).fetch();
-                   if (assets.length > 0) {
-                     updates.push(assets[0].prepareUpdate((r: any) => {
-                       r.serverId = success.asset_id;
-                     }));
-                   }
+                  // For MANUFACTURING_START, the payload has asset_number, we can find the offline asset by asset_number
+                  const assets = await database.collections.get('assets').query(
+                    Q.where('asset_number', payload.asset_number),
+                    Q.where('server_id', null) // Only update if it doesn't already have one
+                  ).fetch();
+                  if (assets.length > 0) {
+                    updates.push(assets[0].prepareUpdate((r: any) => {
+                      r.serverId = success.asset_id;
+                    }));
+                  }
                 }
               } catch (e) {
                 console.warn('Cross-entity reconciliation failed for asset_id', e);
@@ -301,7 +295,7 @@ export class SyncEngine {
       const updates = batch.map(op => op.prepareUpdate(o => {
         o.status = 'RETRY';
         o.attemptCount = (o.attemptCount || 0) + 1;
-        const backoffMs = Math.min(Math.pow(2, o.attemptCount) * 1000, 300000); 
+        const backoffMs = Math.min(Math.pow(2, o.attemptCount) * 1000, 300000);
         o.nextRetryAt = new Date(Date.now() + backoffMs);
         o.errorCode = code;
       }));

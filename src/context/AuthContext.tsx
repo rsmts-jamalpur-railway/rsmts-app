@@ -85,7 +85,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Listen for token expiry emitted by the axios 401 interceptor.
     // Resets in-memory state so RootNavigator redirects to Login immediately.
-    const sub = DeviceEventEmitter.addListener('AUTH_SESSION_EXPIRED', () => {
+    const sub = DeviceEventEmitter.addListener('AUTH_SESSION_EXPIRED', async () => {
+      try {
+        await AsyncStorage.multiRemove([
+          '@Auth:role', '@Auth:roles', '@Auth:token', '@Auth:userId', 
+          '@Auth:employeeId', '@Auth:userName', '@Auth:assignedLocationId', '@Auth:permissions'
+        ]);
+      } catch (e) {
+        console.error('Failed to clear async storage on expiry', e);
+      }
       setRole(null);
       setRoles([]);
       setToken(null);
