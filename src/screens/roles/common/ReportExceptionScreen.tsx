@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../../context/AuthContext';
-import { ExceptionRepository } from '../../../database/v2/repositories/ExceptionRepository';
-import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
-import withObservables from '@nozbe/with-observables';
-import { Q } from '@nozbe/watermelondb';
-import Asset from '../../../database/v2/models/Asset';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../../config';
+import 'react-native-get-random-values';
+import uuid from 'react-native-uuid';
 
 const EXCEPTION_TYPES = [
   { label: 'Damage', value: 'DAMAGE', icon: 'alert-decagram-outline' },
@@ -22,14 +23,44 @@ const SEVERITIES = [
   { label: 'Critical', value: 'CRITICAL', color: '#ef4444', bg: '#fef2f2' },
 ];
 
-function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
-  const { employeeId } = useAuth();
-
+export default function ReportExceptionScreen({ navigation }: any) {
+  const [assets, setAssets] = useState<any[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState('');
   const [type, setType] = useState('MISSING_PARTS');
   const [severity, setSeverity] = useState('HIGH');
   const [reason, setReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [loadingAssets, setLoadingAssets] = useState(true);
+
+  useEffect(() => {
+    fetchActiveAssets();
+  }, []);
+
+  const fetchActiveAssets = async () => {
+    try {
+      const isConnected = await NetInfo.fetch().then(s => s.isConnected);
+      if (!isConnected) {
+        Toast.show({ type: 'error', text1: 'Offline', text2: 'Cannot fetch assets for exception reporting' });
+        setLoadingAssets(false);
+        return;
+      }
+
+      const token = await AsyncStorage.getItem('@Auth:token');
+      const res = await fetch(`${API_BASE_URL}/dashboard/pipeline?pipeline=ALL`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Filter out assets that already have an open exception
+        setAssets(data.filter((a: any) => a.operational_status !== 'EXCEPTION_LOGGED'));
+      }
+    } catch (error) {
+      console.error('Failed to fetch assets', error);
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load assets' });
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!selectedAssetId) {
@@ -55,17 +86,41 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
           onPress: async () => {
             setProcessing(true);
             try {
-              await ExceptionRepository.reportException({
-                assetId: selectedAssetId,
-                type,
-                severity,
-                reason
+              const isConnected = await NetInfo.fetch().then(s => s.isConnected);
+              if (!isConnected) {
+                Alert.alert('Error', 'You must be online to report an exception in real-time mode.');
+                setProcessing(false);
+                return;
+              }
+
+              const token = await AsyncStorage.getItem('@Auth:token');
+              const res = await fetch(`${API_BASE_URL}/exceptions`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  client_operation_id: uuid.v4(),
+                  asset_id: selectedAssetId,
+                  type,
+                  severity,
+                  reason
+                })
               });
-              Alert.alert('Success', 'Exception reported and queued for sync.', [
+
+              if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Failed to report exception');
+              }
+
+              Alert.alert('Success', 'Exception reported successfully.', [
                 {
                   text: 'OK', onPress: () => {
                     setSelectedAssetId('');
                     setReason('');
+                    // Remove the asset from the list to prevent duplicate exception reporting
+                    setAssets(prev => prev.filter(a => a.id !== selectedAssetId));
                   }
                 }
               ]);
@@ -109,11 +164,13 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
             <Text style={styles.fieldTitle}>Select Asset <Text style={{ color: '#ba1a1a' }}>*</Text></Text>
             <Text style={styles.fieldOptional}>MANDATORY</Text>
           </View>
-          {assets.length === 0 ? (
+          {loadingAssets ? (
+            <ActivityIndicator size="small" color="#0f52ba" />
+          ) : assets.length === 0 ? (
             <Text style={styles.emptyNote}>No active assets available in yard.</Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.assetGrid}>
-              {assets.map((a: Asset) => {
+              {assets.map((a: any) => {
                 const isSelected = selectedAssetId === a.id;
                 return (
                   <TouchableOpacity
@@ -121,8 +178,8 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
                     style={[styles.assetOption, isSelected && styles.assetOptionActive]}
                     onPress={() => setSelectedAssetId(a.id)}
                   >
-                    <Text style={[styles.assetOptionId, isSelected && styles.assetOptionTextActive]}>{a.assetNumber}</Text>
-                    <Text style={[styles.assetOptionStatus, isSelected && styles.assetOptionSubActive]}>{a.currentStatus.replace(/_/g, ' ')}</Text>
+                    <Text style={[styles.assetOptionId, isSelected && styles.assetOptionTextActive]}>{a.asset_number}</Text>
+                    <Text style={[styles.assetOptionStatus, isSelected && styles.assetOptionSubActive]}>{(a.operational_status || '').replace(/_/g, ' ')}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -131,14 +188,14 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
 
           {selectedAssetId && (
             (() => {
-              const selectedAsset = assets.find((a: Asset) => a.id === selectedAssetId);
+              const selectedAsset = assets.find((a: any) => a.id === selectedAssetId);
               if (!selectedAsset) return null;
               return (
                 <View style={{ marginTop: 12, padding: 12, backgroundColor: '#f2f3ff', borderRadius: 8, borderWidth: 1, borderColor: '#dae2fd' }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#003c90', marginBottom: 4 }}>SELECTED ASSET DETAILS</Text>
-                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Category: {selectedAsset.assetCategory || 'WAGON'}</Text>
-                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Current Status: {selectedAsset.currentStatus}</Text>
-                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Location ID: {selectedAsset.currentLocationId}</Text>
+                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Category: {selectedAsset.category_id || 'WAGON'}</Text>
+                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Current Status: {selectedAsset.operational_status}</Text>
+                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Location ID: {selectedAsset.current_location}</Text>
                 </View>
               );
             })()
@@ -227,12 +284,6 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
   );
 }
 
-const enhance = withObservables(['database'], ({ database }: any) => ({
-  assets: database.collections.get('assets').query(Q.where('current_status', Q.notEq('EXCEPTION_LOGGED'))).observe()
-}));
-
-export default withDatabase(enhance(ReportExceptionScreenBase));
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { flex: 1 },
@@ -244,14 +295,6 @@ const styles = StyleSheet.create({
   subHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f2f3ff', marginLeft: -8 },
   subHeaderTitle: { fontSize: 17, fontWeight: '800', color: '#131b2e', textTransform: 'uppercase', letterSpacing: 0.5 },
-
-  calloutCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f2f3ff', padding: 12, borderRadius: 12, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  calloutLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  calloutIconBox: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#ffdada', alignItems: 'center', justifyContent: 'center' },
-  calloutSuper: { fontSize: 11, fontWeight: '800', color: '#434653', textTransform: 'uppercase', letterSpacing: 0.8 },
-  calloutTitle: { fontSize: 14, fontWeight: '700', color: '#131b2e' },
-  formTag: { backgroundColor: '#dae2fd', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
-  formTagText: { fontSize: 11, fontWeight: '700', color: '#434653', fontFamily: 'monospace' },
 
   fieldGroup: { marginBottom: 24 },
   fieldHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },

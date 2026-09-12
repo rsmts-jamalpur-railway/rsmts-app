@@ -28,6 +28,7 @@ export default function ActiveOrdersScreen({ navigation }: any) {
 
   useEffect(() => {
     loadActiveOrders();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentShop]);
 
   const loadActiveOrders = async () => {

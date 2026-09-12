@@ -432,7 +432,7 @@ function YardMasterFlowBase({ database }: any) {
         {() => <DispatchScreen database={database} />}
       </Tab.Screen>
       <Tab.Screen name="Search">
-        {() => <SearchWagon database={database} />}
+        {() => <SearchWagon />}
       </Tab.Screen>
     </Tab.Navigator>
   );

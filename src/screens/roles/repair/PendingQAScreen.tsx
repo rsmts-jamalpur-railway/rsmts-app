@@ -14,6 +14,7 @@ export default function PendingQAScreen({ navigation }: any) {
 
   useEffect(() => {
     loadPendingQACycles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignedLocationId]);
 
   const loadPendingQACycles = async () => {

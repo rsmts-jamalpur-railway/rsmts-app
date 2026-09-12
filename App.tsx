@@ -13,6 +13,7 @@ import { database } from './src/database';
 import RootNavigator from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { useNetworkSync } from './src/hooks/useNetworkSync';
+import Toast from 'react-native-toast-message';
 
 function App() {
   useNetworkSync();
@@ -25,6 +26,7 @@ function App() {
           <RootNavigator />
         </AuthProvider>
       </DatabaseProvider>
+      <Toast />
     </SafeAreaProvider>
   );
 }

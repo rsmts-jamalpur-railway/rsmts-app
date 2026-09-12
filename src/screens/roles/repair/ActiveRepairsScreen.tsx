@@ -40,6 +40,7 @@ export default function ActiveRepairsScreen({ navigation }: any) {
 
   useEffect(() => {
     loadActiveCycles();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentShop]);
 
   const loadActiveCycles = async () => {

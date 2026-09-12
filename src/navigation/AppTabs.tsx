@@ -68,7 +68,7 @@ export default function AppTabs() {
       />
       <Tab.Screen
         name="Exceptions"
-        component={require('../screens/roles/common/ReportExceptionScreen').default}
+        component={require('../screens/roles/common/ExceptionListScreen').default}
         options={{
           tabBarIcon: ({ color, size }) => <Icon name="alert-circle-outline" color={color} size={size} />
         }}

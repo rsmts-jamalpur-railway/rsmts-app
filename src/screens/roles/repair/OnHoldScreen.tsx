@@ -25,6 +25,7 @@ export default function OnHoldScreen({ navigation }: any) {
 
   useEffect(() => {
     loadOnHoldCycles();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentShop]);
 
   const loadOnHoldCycles = async () => {

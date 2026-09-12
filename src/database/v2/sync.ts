@@ -40,7 +40,10 @@ export class SyncEngine {
           const response = await fetch(`${BASE_URL}/sync/pull?last_revision=${cursor}&limit=500`, {
             headers: {
               'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
             }
           });
 

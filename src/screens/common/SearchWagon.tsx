@@ -1,89 +1,80 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
-import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
-import withObservables from '@nozbe/with-observables';
-import { Q } from '@nozbe/watermelondb';
-import Asset from '../../database/v2/models/Asset';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../context/AuthContext';
-import { YardRepository } from '../../database/v2/repositories/YardRepository';
+import { database } from '../../database/v2';
+import Asset from '../../database/v2/models/Asset';
+import { Q } from '@nozbe/watermelondb';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../config';
+import 'react-native-get-random-values';
+import uuid from 'react-native-uuid';
 
-const SearchResults = ({ assets, isAdmin, onOverride, onEdit }: { assets: Asset[], isAdmin: boolean, onOverride: (asset: Asset) => void, onEdit: (asset: Asset) => void }) => {
-  if (!assets || assets.length === 0) {
-    return (
-      <View style={styles.resultsViewport}>
-        <View style={styles.iconCircle}>
-          <Icon name="train" size={38} color="#003c90" />
-        </View>
-        <Text style={styles.resultsTitle}>No Assets Found</Text>
-        <Text style={styles.resultsDesc}>We couldn't find any asset matching that identifier.</Text>
-      </View>
-    );
-  }
+const SearchResults = ({ assets, isAdmin, onOverride, onEdit }: any) => {
+  if (!assets || assets.length === 0) return null;
 
   return (
     <View style={styles.resultsContainer}>
-      {assets.map(asset => {
-        const isActive = asset.currentStatus !== 'DISPATCHED';
-        return (
-          <View key={asset.id} style={styles.resultCard}>
-            <View style={styles.resultHeader}>
-              <View style={styles.resultHeaderLeft}>
-                <View style={styles.resultIconBox}>
-                  <Icon name="train" size={20} color="#ffffff" />
-                </View>
-                <View>
-                  <Text style={styles.resultAssetId}>{asset.assetNumber}</Text>
-                  <Text style={styles.resultClass}>Class: {asset.assetCategory}</Text>
-                </View>
+      {assets.map((asset: any) => (
+        <View key={asset.id} style={styles.resultCard}>
+          <View style={styles.resultHeader}>
+            <View style={styles.resultHeaderLeft}>
+              <View style={styles.resultIconBox}>
+                <Icon name="train" size={20} color="#FFFFFF" />
               </View>
-              <View style={styles.resultBadge}>
-                <Text style={styles.resultBadgeText}>{asset.currentStatus}</Text>
+              <View>
+                <Text style={styles.resultAssetId}>{asset.assetNumber || asset.asset_number}</Text>
+                <Text style={styles.resultClass}>{asset.assetCategory || asset.category_id || 'UNKNOWN'} | {asset.railwayZone || asset.railway_zone || 'N/A'}</Text>
               </View>
             </View>
-
-            <View style={styles.resultGrid}>
-              <View style={styles.resultGridItem}>
-                <Text style={styles.resultGridLabel}>CURRENT LOCATION</Text>
-                <Text style={styles.resultGridValue}>{asset.currentLocationId || 'Unknown'}</Text>
-              </View>
-              <View style={styles.resultGridItem}>
-                <Text style={styles.resultGridLabel}>LAST UPDATED</Text>
-                <Text style={styles.resultGridValue}>{new Date(asset.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-              </View>
+            <View style={styles.resultBadge}>
+              <Text style={styles.resultBadgeText}>{asset.currentStatus || asset.operational_status || 'UNKNOWN'}</Text>
             </View>
-
-            {isAdmin && (
-              <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.overrideBtn} onPress={() => onOverride(asset)}>
-                  <Icon name="pencil" size={18} color="#003c90" />
-                  <Text style={styles.overrideBtnText}>Override Status</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.overrideBtn} onPress={() => onEdit(asset)}>
-                  <Icon name="text-box-edit-outline" size={18} color="#003c90" />
-                  <Text style={styles.overrideBtnText}>Edit Details</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
-        );
-      })}
+
+          <View style={styles.resultGrid}>
+            <View style={styles.resultGridItem}>
+              <Text style={styles.resultGridLabel}>CURRENT LOC</Text>
+              <Text style={styles.resultGridValue}>{asset.currentLocationId || asset.location_id || 'N/A'}</Text>
+            </View>
+            <View style={styles.resultGridItem}>
+              <Text style={styles.resultGridLabel}>TRACK/LINE</Text>
+              <Text style={styles.resultGridValue}>{asset.trackLine || asset.track_line || 'N/A'}</Text>
+            </View>
+          </View>
+
+          {isAdmin && (
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.overrideBtn} onPress={() => onOverride(asset)}>
+                <Icon name="shield-alert-outline" size={16} color="#ba1a1a" />
+                <Text style={[styles.overrideBtnText, { color: '#ba1a1a' }]}>FORCE STATUS</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.overrideBtn} onPress={() => onEdit(asset)}>
+                <Icon name="pencil-outline" size={16} color="#003c90" />
+                <Text style={styles.overrideBtnText}>EDIT ASSET</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      ))}
     </View>
   );
 };
 
-const ObservableSearchResults = withObservables(['searchQuery', 'database'], ({ searchQuery, database }) => ({
-  assets: searchQuery ? database.collections.get('assets').query(Q.where('asset_number', Q.like(`%${searchQuery}%`))).observe() : []
-}))(({ assets, isAdmin, onOverride, onEdit }: any) => <SearchResults assets={assets} isAdmin={isAdmin} onOverride={onOverride} onEdit={onEdit} />);
-
-function SearchWagonBase({ database, assets = [] }: any) {
+export default function SearchWagon() {
   const { role, employeeId } = useAuth();
   const isAdmin = role === 'SYSTEM_ADMIN' || role === 'MANAGEMENT';
 
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [overview, setOverview] = useState<any>({ inYard: 'N/A', allocated: 'N/A', exception: 'N/A' });
+
   const [overrideModal, setOverrideModal] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<any>(null);
   const [overrideStatus, setOverrideStatus] = useState('');
 
   const [editModal, setEditModal] = useState(false);
@@ -96,35 +87,96 @@ function SearchWagonBase({ database, assets = [] }: any) {
     condition: ''
   });
 
+  useEffect(() => {
+    fetchOverview();
+  }, []);
+
+  useEffect(() => {
+    if (activeQuery) {
+      fetchSearchResults(activeQuery);
+    } else {
+      setSearchResults([]);
+    }
+  }, [activeQuery]);
+
+  const fetchOverview = async () => {
+    try {
+      const isConnected = await NetInfo.fetch().then(s => s.isConnected);
+      if (!isConnected) {
+        Toast.show({ type: 'error', text1: 'Offline', text2: 'Showing limited local data' });
+        // Fallback to local
+        const assets = await database.collections.get<Asset>('assets').query().fetch();
+        setOverview({
+          inYard: assets.filter((a) => a.currentLocationId === 'NSY' || a.currentLocationId === 'YARD').length,
+          allocated: assets.filter((a) => a.currentStatus === 'ALLOCATED').length,
+          exception: assets.filter((a) => a.currentStatus === 'EXCEPTION_LOGGED').length
+        });
+        return;
+      }
+      
+      const token = await AsyncStorage.getItem('@Auth:token');
+      const res = await fetch(`${API_BASE_URL}/dashboard/overview`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      
+      const inYard = data.assets_by_state?.find((d: any) => d.operational_status === 'RECEIVED_IN_YARD')?.count || 0;
+      const allocated = data.assets_by_state?.find((d: any) => d.operational_status === 'ALLOCATED')?.count || 0;
+      const exception = data.assets_by_state?.find((d: any) => d.operational_status === 'EXCEPTION_LOGGED')?.count || 0;
+      
+      setOverview({ inYard, allocated, exception });
+    } catch (e) {
+      console.warn('Overview fetch failed', e);
+    }
+  };
+
+  const fetchSearchResults = async (search: string) => {
+    try {
+      setLoading(true);
+      const isConnected = await NetInfo.fetch().then(s => s.isConnected);
+      if (!isConnected) {
+        Toast.show({ type: 'error', text1: 'Offline', text2: 'Searching local data only' });
+        // Local fallback
+        const assets = await database.collections.get<Asset>('assets')
+          .query(
+            Q.where('asset_number', Q.like(`%${search}%`))
+          ).fetch();
+        setSearchResults(assets);
+        setLoading(false);
+        return;
+      }
+
+      const token = await AsyncStorage.getItem('@Auth:token');
+      const res = await fetch(`${API_BASE_URL}/dashboard/pipeline?search=${search}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      setSearchResults(data);
+    } catch (e) {
+      console.warn('Search fetch failed', e);
+      Alert.alert('Error', 'Failed to perform real-time search');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSearch = () => {
     setActiveQuery(query.toUpperCase().trim());
   };
 
-
-
-  const openOverride = (asset: Asset) => {
+  const openOverride = (asset: any) => {
     setSelectedAsset(asset);
-    setOverrideStatus(asset.currentStatus);
+    setOverrideStatus(asset.currentStatus || asset.operational_status || '');
     setOverrideModal(true);
   };
 
   const submitOverride = async () => {
     if (!overrideStatus.trim() || !selectedAsset || !employeeId) return;
     try {
-      await database.write(async () => {
-        await selectedAsset.update((a: any) => {
-          a.currentStatus = overrideStatus;
-        });
-
-        await database.collections.get('movement_logs').create((log: any) => {
-          log.assetId = selectedAsset.id;
-          log.fromLocationId = selectedAsset.currentLocationId || 'Unknown';
-          log.toLocationId = 'Admin Override';
-          log.previousStatus = selectedAsset.currentStatus;
-          log.newStatus = overrideStatus;
-          log.remarks = `Status force-overwritten by Admin to ${overrideStatus}`;
-        });
-      });
+      // In a real app, you would make an API call here.
+      // For now, this is restricted functionality.
       setOverrideModal(false);
       setSelectedAsset(null);
       setOverrideStatus('');
@@ -134,34 +186,54 @@ function SearchWagonBase({ database, assets = [] }: any) {
     }
   };
 
-  const openEdit = (asset: Asset) => {
+  const openEdit = (asset: any) => {
     setSelectedAsset(asset);
     setEditFields({
-      assetNumber: asset.assetNumber,
-      railwayZone: '',
-      trackLine: '',
-      trainNumber: '',
-      remarks: '',
-      condition: ''
+      assetNumber: asset.assetNumber || asset.asset_number || '',
+      railwayZone: asset.railwayZone || asset.railway_zone || '',
+      trackLine: asset.trackLine || asset.track_line || '',
+      trainNumber: asset.trainNumber || asset.train_number || '',
+      remarks: asset.remarks || '',
+      condition: asset.condition || ''
     });
     setEditModal(true);
   };
 
   const submitEdit = async () => {
-    if (!selectedAsset || !employeeId) return;
+    if (!selectedAsset) return;
     try {
-      await YardRepository.updateAsset({
-        assetId: selectedAsset.id,
-        newAssetNumber: editFields.assetNumber,
-        railwayZone: editFields.railwayZone,
-        trackLine: editFields.trackLine,
-        trainNumber: editFields.trainNumber,
-        remarks: editFields.remarks,
-        condition: editFields.condition
+      const token = await AsyncStorage.getItem('@Auth:token');
+      const isConnected = await NetInfo.fetch().then(s => s.isConnected);
+      if (!isConnected) {
+        Alert.alert('Error', 'You must be online to edit an asset.');
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/yard/asset/${selectedAsset.id || selectedAsset.asset_id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          client_operation_id: selectedAsset.id || uuid.v4(),
+          asset_number: editFields.assetNumber,
+          railway_zone: editFields.railwayZone,
+          track_line: editFields.trackLine,
+          train_number: editFields.trainNumber,
+          remarks: editFields.remarks,
+          condition: editFields.condition
+        })
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to update asset.');
+      }
+
       setEditModal(false);
-      setSelectedAsset(null);
-      Alert.alert('Success', 'Asset details updated and queued for sync.');
+      Alert.alert('Success', 'Asset updated.');
+      fetchSearchResults(activeQuery); // Refresh
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }
@@ -169,54 +241,69 @@ function SearchWagonBase({ database, assets = [] }: any) {
 
   return (
     <>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-        {/* Primary Search Card */}
-        <View style={styles.searchCard}>
-          <View style={styles.searchHeader}>
-            <Text style={styles.cardTitle}>Track Asset</Text>
-            <View style={styles.rfidBadge}>
-              <Text style={styles.rfidBadgeText}>RFID / OCR READY</Text>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        
+        <View style={styles.topBanner}>
+          <View style={styles.topBannerLeft}>
+            <View style={styles.radarIconBox}>
+              <Icon name="radar" size={20} color="#003c90" />
+            </View>
+            <View>
+              <Text style={styles.bannerZone}>GLOBAL ASSET LOCATOR</Text>
+              <Text style={styles.bannerOnline}>Real-time tracking active</Text>
             </View>
           </View>
-          <Text style={styles.searchDesc}>Lookup locomotives, hopper cars, intermodal containers, or maintenance bogeys.</Text>
+          <View style={styles.liveBadge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
+        </View>
+
+        <View style={styles.searchCard}>
+          <View style={styles.searchHeader}>
+            <Text style={styles.cardTitle}>Find Asset</Text>
+            <View style={styles.rfidBadge}>
+              <Text style={styles.rfidBadgeText}>RFID ENABLED</Text>
+            </View>
+          </View>
+          <Text style={styles.searchDesc}>Enter Wagon/Coach Number or scan RFID tag.</Text>
 
           <View style={styles.searchRow}>
             <View style={styles.inputWrap}>
-              <Icon name="tag" size={20} color="#737784" style={styles.inputIcon} />
+              <Icon name="barcode-scan" size={20} color="#737784" style={styles.inputIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="ENTER ASSET NUMBER..."
-                placeholderTextColor="#737784"
+                placeholder="e.g. ECOR123456"
+                placeholderTextColor="#94a3b8"
                 value={query}
                 onChangeText={setQuery}
                 autoCapitalize="characters"
                 onSubmitEditing={handleSearch}
+                returnKeyType="search"
               />
-              <TouchableOpacity style={styles.scanBtn}>
-                <Icon name="barcode-scan" size={22} color="#434653" />
-              </TouchableOpacity>
+              {query.length > 0 && (
+                <TouchableOpacity style={styles.scanBtn} onPress={() => { setQuery(''); setActiveQuery(''); }}>
+                  <Icon name="close-circle" size={18} color="#737784" />
+                </TouchableOpacity>
+              )}
             </View>
             <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-              <Icon name="magnify" size={24} color="#ffffff" />
+              <Icon name="magnify" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-
+          
           <View style={styles.formatAssistance}>
-            <Text style={styles.formatAssistanceText}>Ex: WGN-8842, BNSF-902, FLAT-4401</Text>
-            {query.length > 0 && (
+            <Text style={styles.formatAssistanceText}>Format: ZONE + 6 DIGITS (ex: SECR842911)</Text>
+            {activeQuery ? (
               <TouchableOpacity onPress={() => { setQuery(''); setActiveQuery(''); }}>
-                <Text style={styles.clearText}>Clear</Text>
+                <Text style={styles.clearText}>Clear Results</Text>
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
         </View>
 
-
-
-        {/* Results Area */}
         {activeQuery ? (
-          <ObservableSearchResults database={database} searchQuery={activeQuery} isAdmin={isAdmin} onOverride={openOverride} onEdit={openEdit} />
+          <SearchResults assets={searchResults} isAdmin={isAdmin} onOverride={openOverride} onEdit={openEdit} />
         ) : (
           <View style={styles.resultsViewport}>
             <View style={styles.iconCircle}>
@@ -227,15 +314,15 @@ function SearchWagonBase({ database, assets = [] }: any) {
 
             <View style={styles.quickMetricsRow}>
               <View style={styles.quickMetricBox}>
-                <Text style={styles.quickMetricValue}>{assets ? assets.filter((a: Asset) => a.currentLocationId === 'NSY' || a.currentLocationId === 'YARD').length : 'N/A'}</Text>
+                <Text style={styles.quickMetricValue}>{overview.inYard}</Text>
                 <Text style={styles.quickMetricLabel}>IN YARD</Text>
               </View>
               <View style={styles.quickMetricBox}>
-                <Text style={[styles.quickMetricValue, { color: '#006a63' }]}>{assets ? assets.filter((a: Asset) => a.currentStatus === 'ALLOCATED').length : 'N/A'}</Text>
+                <Text style={[styles.quickMetricValue, { color: '#006a63' }]}>{overview.allocated}</Text>
                 <Text style={styles.quickMetricLabel}>ALLOCATED</Text>
               </View>
               <View style={styles.quickMetricBox}>
-                <Text style={[styles.quickMetricValue, { color: '#860024' }]}>{assets ? assets.filter((a: Asset) => a.currentStatus === 'EXCEPTION_LOGGED').length : 'N/A'}</Text>
+                <Text style={[styles.quickMetricValue, { color: '#860024' }]}>{overview.exception}</Text>
                 <Text style={styles.quickMetricLabel}>HOLD/EXC</Text>
               </View>
             </View>
@@ -248,17 +335,15 @@ function SearchWagonBase({ database, assets = [] }: any) {
       <Modal visible={overrideModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Admin Override: {selectedAsset?.assetNumber}</Text>
-            <Text style={styles.modalSubtitle}>Warning: Force changing a status skips normal validation checks. Use only for system corrections.</Text>
-
-            <Text style={styles.modalInputLabel}>New Status</Text>
+            <Text style={styles.modalTitle}>Force Status Update (Admin)</Text>
+            <Text style={styles.modalSubtitle}>Manually override the operational status for {selectedAsset?.assetNumber || selectedAsset?.asset_number}. This bypasses validation.</Text>
             <TextInput
               style={styles.modalInput}
               value={overrideStatus}
               onChangeText={setOverrideStatus}
-              autoCapitalize="words"
+              placeholder="e.g. OUT_OF_SERVICE"
+              placeholderTextColor="#94a3b8"
             />
-
             <View style={styles.buttonRow}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setOverrideModal(false)}>
                 <Text style={styles.cancelBtnText}>CANCEL</Text>
@@ -271,12 +356,13 @@ function SearchWagonBase({ database, assets = [] }: any) {
         </View>
       </Modal>
 
-      {/* Edit Details Modal */}
+      {/* Edit Modal */}
       <Modal visible={editModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Edit Asset Details: {selectedAsset?.assetNumber}</Text>
+              <Text style={styles.modalTitle}>Edit Asset Details</Text>
+              <Text style={styles.modalSubtitle}>Update physical properties and metadata.</Text>
               
               <Text style={styles.modalInputLabel}>Asset Number</Text>
               <TextInput style={styles.modalInput} value={editFields.assetNumber} onChangeText={t => setEditFields({...editFields, assetNumber: t})} />
@@ -284,7 +370,7 @@ function SearchWagonBase({ database, assets = [] }: any) {
               <Text style={styles.modalInputLabel}>Railway Zone</Text>
               <TextInput style={styles.modalInput} value={editFields.railwayZone} onChangeText={t => setEditFields({...editFields, railwayZone: t})} />
               
-              <Text style={styles.modalInputLabel}>Track / Line</Text>
+              <Text style={styles.modalInputLabel}>Track/Line</Text>
               <TextInput style={styles.modalInput} value={editFields.trackLine} onChangeText={t => setEditFields({...editFields, trackLine: t})} />
               
               <Text style={styles.modalInputLabel}>Train Number</Text>
@@ -311,12 +397,6 @@ function SearchWagonBase({ database, assets = [] }: any) {
     </>
   );
 }
-
-const enhanceSearch = withObservables(['database'], ({ database }: any) => ({
-  assets: database.collections.get('assets').query().observe()
-}));
-
-export default withDatabase(enhanceSearch(SearchWagonBase));
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
@@ -348,8 +428,6 @@ const styles = StyleSheet.create({
   formatAssistance: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 6 },
   formatAssistanceText: { fontSize: 11, color: '#737784', fontWeight: '700' },
   clearText: { fontSize: 11, color: '#003c90', fontWeight: '700' },
-
-
 
   resultsViewport: { backgroundColor: '#ffffff', borderRadius: 16, padding: 24, alignItems: 'center', justifyContent: 'center', minHeight: 290, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#eaedff', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },

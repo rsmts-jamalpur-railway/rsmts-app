@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { SyncEngine } from '../database/v2/sync';
+import { io, Socket } from 'socket.io-client';
+import Toast from 'react-native-toast-message';
+import { API_BASE_URL } from '../config';
 
 export function useNetworkSync() {
   const isSyncing = useRef(false);
@@ -27,7 +30,16 @@ export function useNetworkSync() {
     // Trigger on network state change
     const unsubscribeNet = NetInfo.addEventListener(state => {
       if (state.isConnected && state.isInternetReachable !== false) {
+        Toast.hide(); // Hide any offline toasts if we are back online
         triggerSync();
+      } else if (state.isConnected === false) {
+        Toast.show({
+          type: 'error',
+          text1: 'No Internet Connection',
+          text2: 'Real-time updates are paused. You are working offline.',
+          position: 'top',
+          autoHide: false, // Keep it showing until internet returns
+        });
       }
     });
 
@@ -41,9 +53,21 @@ export function useNetworkSync() {
     // Initial check
     triggerSync();
 
+    // Socket.IO for real-time sync
+    const socket = io(API_BASE_URL);
+    socket.on('connect', () => {
+      console.log('Socket connected for real-time sync.');
+    });
+    
+    socket.on('sync_event', (payload) => {
+      console.log('Received real-time sync event:', payload);
+      triggerSync(); // Pings the backend immediately
+    });
+
     return () => {
       unsubscribeNet();
       unsubscribeApp.remove();
+      socket.disconnect();
     };
   }, []);
 }

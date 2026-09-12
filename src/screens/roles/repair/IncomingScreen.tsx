@@ -36,6 +36,7 @@ export default function IncomingScreen({ navigation }: any) {
 
   useEffect(() => {
     loadIncomingAssets();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentShop]);
 
   const loadIncomingAssets = async () => {

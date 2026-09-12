@@ -1,43 +1,85 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../context/AuthContext';
-import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
-import withObservables from '@nozbe/with-observables';
-import { Q } from '@nozbe/watermelondb';
-import Asset from '../../database/v2/models/Asset';
-import Location from '../../database/v2/models/Location';
-import MovementLog from '../../database/v2/models/MovementLog';
-import { SyncEngine } from '../../database/v2/sync';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../config';
 
 interface YardDashboardProps {
   navigation: any;
-  assets?: Asset[];
-  nsyLocation?: Location[];
-  recentLogs?: MovementLog[];
 }
 
-function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLogs = [] }: YardDashboardProps) {
+export default function YardDashboardBase({ navigation }: YardDashboardProps) {
   const { employeeId, can } = useAuth();
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [expandedLogId, setExpandedLogId] = React.useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  const nsyCap = nsyLocation.length > 0 ? nsyLocation[0].maxCapacity : 500;
-  const inYardCount = assets.filter(a => a.currentLocationId === 'NSY' || a.currentLocationId === 'YARD').length;
-  const awaitingAllocation = assets.filter(a => a.currentStatus === 'RECEIVED_IN_YARD').length;
-  const readyForDispatch = assets.filter(a => a.currentStatus === 'FIT').length;
-  const inRepairCount = assets.filter(a => a.currentStatus === 'IN_REPAIR').length;
+  const [metrics, setMetrics] = useState({
+    nsyCap: 500,
+    inYardCount: 0,
+    awaitingAllocation: 0,
+    readyForDispatch: 0,
+    inRepairCount: 0,
+  });
 
-  const handleRefresh = React.useCallback(async () => {
-    setRefreshing(true);
+  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+
+  const fetchDashboardData = useCallback(async () => {
     try {
-      await SyncEngine.sync();
+      const isConnected = await NetInfo.fetch().then(s => s.isConnected);
+      if (!isConnected) {
+        Toast.show({ type: 'error', text1: 'Offline', text2: 'Cannot fetch live yard data' });
+        return;
+      }
+
+      const token = await AsyncStorage.getItem('@Auth:token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+
+      // Fetch Locations for NSY Capacity
+      const locRes = await fetch(`${API_BASE_URL}/dashboard/locations`, { headers });
+      let nsyCap = 500;
+      if (locRes.ok) {
+        const locations = await locRes.json();
+        const nsy = locations.find((l: any) => l.location_id === 'NSY');
+        if (nsy && nsy.max_capacity) nsyCap = nsy.max_capacity;
+      }
+
+      // Fetch Pipeline for counts
+      const pipelineRes = await fetch(`${API_BASE_URL}/dashboard/pipeline?pipeline=ALL`, { headers });
+      let inYardCount = 0, awaitingAllocation = 0, readyForDispatch = 0, inRepairCount = 0;
+      if (pipelineRes.ok) {
+        const assets = await pipelineRes.json();
+        inYardCount = assets.filter((a: any) => a.current_location === 'NSY' || a.current_location === 'YARD').length;
+        awaitingAllocation = assets.filter((a: any) => a.operational_status === 'RECEIVED_IN_YARD').length;
+        readyForDispatch = assets.filter((a: any) => a.operational_status === 'FIT').length;
+        inRepairCount = assets.filter((a: any) => a.operational_status === 'IN_REPAIR').length;
+      }
+
+      setMetrics({ nsyCap, inYardCount, awaitingAllocation, readyForDispatch, inRepairCount });
+
+      // Fetch Movements
+      const movRes = await fetch(`${API_BASE_URL}/movements?limit=6`, { headers });
+      if (movRes.ok) {
+        const logs = await movRes.json();
+        setRecentLogs(logs);
+      }
     } catch (error) {
-      console.error('Manual sync failed:', error);
-    } finally {
-      setRefreshing(false);
+      console.error('Fetch failed:', error);
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch yard data' });
     }
   }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
+  };
 
   return (
     <ScrollView 
@@ -66,8 +108,8 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
             </View>
           </View>
           <View>
-            <Text style={styles.metricValue}>{inYardCount} <Text style={styles.metricValueLight}>/ {nsyCap}</Text></Text>
-            <Text style={styles.metricSub}>{Math.round((inYardCount / (nsyCap || 1)) * 100)}% capacity used</Text>
+            <Text style={styles.metricValue}>{metrics.inYardCount} <Text style={styles.metricValueLight}>/ {metrics.nsyCap}</Text></Text>
+            <Text style={styles.metricSub}>{Math.round((metrics.inYardCount / (metrics.nsyCap || 1)) * 100)}% capacity used</Text>
           </View>
         </View>
 
@@ -80,7 +122,7 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
             </View>
           </View>
           <View>
-            <Text style={[styles.metricValue, { color: '#d97706' }]}>{awaitingAllocation}</Text>
+            <Text style={[styles.metricValue, { color: '#d97706' }]}>{metrics.awaitingAllocation}</Text>
             <Text style={styles.metricSub}>In NSY intake</Text>
           </View>
         </View>
@@ -94,7 +136,7 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
             </View>
           </View>
           <View>
-            <Text style={[styles.metricValue, { color: '#006a63' }]}>{readyForDispatch}</Text>
+            <Text style={[styles.metricValue, { color: '#006a63' }]}>{metrics.readyForDispatch}</Text>
             <Text style={styles.metricSub}>QA cleared (FIT)</Text>
           </View>
         </View>
@@ -108,7 +150,7 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
             </View>
           </View>
           <View>
-            <Text style={[styles.metricValue, { color: '#003c90' }]}>{inRepairCount}</Text>
+            <Text style={[styles.metricValue, { color: '#003c90' }]}>{metrics.inRepairCount}</Text>
             <Text style={styles.metricSub}>Active in shops</Text>
           </View>
         </View>
@@ -189,8 +231,6 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
            </View>
         ) : (
           recentLogs.map((log, index) => {
-            const asset = assets.find(a => a.id === log.assetId);
-            const assetDisplay = asset ? asset.assetNumber : log.assetId;
             return (
             <View key={log.id}>
               <TouchableOpacity style={styles.activityItem} onPress={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}>
@@ -199,17 +239,16 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
                 </View>
                 <View style={styles.activityTextCol}>
                   <View style={styles.activityItemHeader}>
-                    <Text style={styles.activityItemTitle} numberOfLines={1}>Asset {assetDisplay}: {log.previousStatus || 'Yard'} to {log.newStatus}</Text>
-                    <Text style={styles.activityItemTime}>{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                    <Text style={styles.activityItemTitle} numberOfLines={1}>Asset {log.asset_id}: {log.previous_status || 'Yard'} to {log.new_status}</Text>
+                    <Text style={styles.activityItemTime}>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                   </View>
-                  <Text style={styles.activityItemSub} numberOfLines={1}>{log.fromLocationId || 'YARD'} to {log.toLocationId}</Text>
+                  <Text style={styles.activityItemSub} numberOfLines={1}>{log.from_location_id || 'YARD'} to {log.to_location_id}</Text>
                   
                   <View style={styles.activityTagRow}>
                     <View style={styles.activityTag}>
                       <View style={styles.activeDot} />
-                      <Text style={styles.activityTagText}>{log.newStatus}</Text>
+                      <Text style={styles.activityTagText}>{log.new_status}</Text>
                     </View>
-                    <Text style={styles.activitySynced}>Synced</Text>
                     <Icon name={expandedLogId === log.id ? "chevron-up" : "chevron-down"} size={16} color="#434653" style={{marginLeft: 'auto'}} />
                   </View>
                 </View>
@@ -217,24 +256,14 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
               
               {expandedLogId === log.id && (
                 <View style={styles.expandedDetails}>
-                  {asset ? (
-                    <>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Asset Category:</Text>
-                        <Text style={styles.detailValue}>{asset.assetCategory || 'WAGON'}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Current Track:</Text>
-                        <Text style={styles.detailValue}>{asset.currentLocationId}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Current Status:</Text>
-                        <Text style={styles.detailValue}>{asset.currentStatus}</Text>
-                      </View>
-                    </>
-                  ) : (
-                    <Text style={styles.detailLabel}>Asset details currently unavailable.</Text>
-                  )}
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Asset ID:</Text>
+                    <Text style={styles.detailValue}>{log.asset_id}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Recorded By:</Text>
+                    <Text style={styles.detailValue}>{log.handled_by}</Text>
+                  </View>
                   {log.remarks ? (
                     <View style={[styles.detailRow, { marginTop: 8 }]}>
                       <Text style={styles.detailLabel}>Remarks:</Text>
@@ -254,17 +283,6 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
     </ScrollView>
   );
 }
-
-const enhance = withObservables(['database'], ({ database }: any) => ({
-  assets: database.collections.get('assets').query().observe(),
-  nsyLocation: database.collections.get('locations').query(Q.where('location_id', 'NSY')).observe(),
-  recentLogs: database.collections.get('movement_logs').query(
-    Q.sortBy('created_at', Q.desc),
-    Q.take(6)
-  ).observe(),
-}));
-
-export default withDatabase(enhance(YardDashboardBase));
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },

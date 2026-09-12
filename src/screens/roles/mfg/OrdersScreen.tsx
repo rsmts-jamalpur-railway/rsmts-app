@@ -37,6 +37,7 @@ export default function OrdersScreen({ navigation }: any) {
 
   useEffect(() => {
     loadIncomingOrders();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentShop]);
 
   const loadIncomingOrders = async () => {

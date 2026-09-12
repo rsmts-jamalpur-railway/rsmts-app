@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { database } from '../../../database/v2';
 import SyncOperation from '../../../database/v2/models/SyncOperation';
 import { SyncEngine } from '../../../database/v2/sync';
 import { Q } from '@nozbe/watermelondb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../../../context/AuthContext';
-
-export default function SyncStatusScreen({ navigation }: any) {
+export default function SyncStatusScreen() {
   const [operations, setOperations] = useState<SyncOperation[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -40,13 +38,13 @@ export default function SyncStatusScreen({ navigation }: any) {
 
       const cursor = await AsyncStorage.getItem('@rsmts_sync_cursor');
       if (cursor && cursor !== '0') {
-        const date = new Date(parseInt(cursor));
+        const date = new Date(parseInt(cursor, 10));
         const today = new Date();
         const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
         setLastPullTime(isToday ? `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : date.toLocaleString());
       }
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -164,7 +162,7 @@ export default function SyncStatusScreen({ navigation }: any) {
               try {
                 const p = JSON.parse(op.payload);
                 targetId = p.assetNumber || p.targetId || p.exceptionId || 'N/A';
-              } catch (e) {}
+              } catch (_) {}
 
               return (
                 <View key={op.id} style={[styles.queueCard, { marginBottom: 8 }]}>

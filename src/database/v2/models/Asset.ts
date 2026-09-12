@@ -11,6 +11,11 @@ export default class Asset extends Model {
   @field('current_status') currentStatus!: string;
   @field('current_location_id') currentLocationId!: string;
   
+  @field('railway_zone') railwayZone!: string | null;
+  @field('track_line') trackLine!: string | null;
+  @field('train_number') trainNumber!: string | null;
+  @field('condition') condition!: string | null;
+  @field('remarks') remarks!: string | null;
   @readonly @date('created_at') createdAt!: Date;
   @readonly @date('updated_at') updatedAt!: Date;
 
