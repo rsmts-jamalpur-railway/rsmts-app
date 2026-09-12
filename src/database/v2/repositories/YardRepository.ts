@@ -108,6 +108,40 @@ export class YardRepository {
     return clientOperationId;
   }
 
+  static async updateAsset(params: {
+    assetId: string;
+    newAssetNumber: string;
+    railwayZone: string;
+    trackLine: string;
+    trainNumber: string;
+    remarks: string;
+    condition: string;
+  }) {
+    const clientOperationId = uuidv4();
+
+    await db.write(async () => {
+      const asset = await db.collections.get<Asset>('assets').find(params.assetId);
+      
+      const assetUpdate = asset.prepareUpdate(a => {
+        if (params.newAssetNumber) a.assetNumber = params.newAssetNumber.toUpperCase().trim();
+      });
+
+      const syncOperation = prepareSyncOperation(db, clientOperationId, 'UPDATE_ASSET', {
+        asset_id: asset.serverId || asset.id,
+        asset_number: params.newAssetNumber ? params.newAssetNumber.toUpperCase().trim() : undefined,
+        railway_zone: params.railwayZone,
+        track_line: params.trackLine,
+        train_number: params.trainNumber,
+        remarks: params.remarks,
+        condition: params.condition
+      });
+
+      await db.batch(assetUpdate, syncOperation);
+    });
+
+    SyncEngine.sync().catch(e => console.log('Auto-sync failed:', e?.message));
+  }
+
   /**
    * Allocates an asset to a specific repair shop
    */

@@ -122,8 +122,6 @@ export class SyncEngine {
         pushChanges: async ({ changes, lastPulledAt }) => {
           // No-op: Business operations are strictly handled by outbox.
         },
-
-        migrationsEnabledAtVersion: 6,
       });
 
       if ((SyncEngine as any)._nextRevision) {

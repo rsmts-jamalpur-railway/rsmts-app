@@ -6,8 +6,9 @@ import { Q } from '@nozbe/watermelondb';
 import Asset from '../../database/v2/models/Asset';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../context/AuthContext';
+import { YardRepository } from '../../database/v2/repositories/YardRepository';
 
-const SearchResults = ({ assets, isAdmin, onOverride }: { assets: Asset[], isAdmin: boolean, onOverride: (asset: Asset) => void }) => {
+const SearchResults = ({ assets, isAdmin, onOverride, onEdit }: { assets: Asset[], isAdmin: boolean, onOverride: (asset: Asset) => void, onEdit: (asset: Asset) => void }) => {
   if (!assets || assets.length === 0) {
     return (
       <View style={styles.resultsViewport}>
@@ -58,6 +59,10 @@ const SearchResults = ({ assets, isAdmin, onOverride }: { assets: Asset[], isAdm
                   <Icon name="pencil" size={18} color="#003c90" />
                   <Text style={styles.overrideBtnText}>Override Status</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.overrideBtn} onPress={() => onEdit(asset)}>
+                  <Icon name="text-box-edit-outline" size={18} color="#003c90" />
+                  <Text style={styles.overrideBtnText}>Edit Details</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -69,7 +74,7 @@ const SearchResults = ({ assets, isAdmin, onOverride }: { assets: Asset[], isAdm
 
 const ObservableSearchResults = withObservables(['searchQuery', 'database'], ({ searchQuery, database }) => ({
   assets: searchQuery ? database.collections.get('assets').query(Q.where('asset_number', Q.like(`%${searchQuery}%`))).observe() : []
-}))(({ assets, isAdmin, onOverride }: any) => <SearchResults assets={assets} isAdmin={isAdmin} onOverride={onOverride} />);
+}))(({ assets, isAdmin, onOverride, onEdit }: any) => <SearchResults assets={assets} isAdmin={isAdmin} onOverride={onOverride} onEdit={onEdit} />);
 
 function SearchWagon({ database }: any) {
   const { role, employeeId } = useAuth();
@@ -80,6 +85,16 @@ function SearchWagon({ database }: any) {
   const [overrideModal, setOverrideModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [overrideStatus, setOverrideStatus] = useState('');
+
+  const [editModal, setEditModal] = useState(false);
+  const [editFields, setEditFields] = useState({
+    assetNumber: '',
+    railwayZone: '',
+    trackLine: '',
+    trainNumber: '',
+    remarks: '',
+    condition: ''
+  });
 
   const handleSearch = () => {
     setActiveQuery(query.toUpperCase().trim());
@@ -114,6 +129,39 @@ function SearchWagon({ database }: any) {
       setSelectedAsset(null);
       setOverrideStatus('');
       Alert.alert('Success', 'Asset status has been force updated.');
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  const openEdit = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setEditFields({
+      assetNumber: asset.assetNumber,
+      railwayZone: '',
+      trackLine: '',
+      trainNumber: '',
+      remarks: '',
+      condition: ''
+    });
+    setEditModal(true);
+  };
+
+  const submitEdit = async () => {
+    if (!selectedAsset || !employeeId) return;
+    try {
+      await YardRepository.updateAsset({
+        assetId: selectedAsset.id,
+        newAssetNumber: editFields.assetNumber,
+        railwayZone: editFields.railwayZone,
+        trackLine: editFields.trackLine,
+        trainNumber: editFields.trainNumber,
+        remarks: editFields.remarks,
+        condition: editFields.condition
+      });
+      setEditModal(false);
+      setSelectedAsset(null);
+      Alert.alert('Success', 'Asset details updated and queued for sync.');
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }
@@ -168,7 +216,7 @@ function SearchWagon({ database }: any) {
 
         {/* Results Area */}
         {activeQuery ? (
-          <ObservableSearchResults database={database} searchQuery={activeQuery} isAdmin={isAdmin} onOverride={openOverride} />
+          <ObservableSearchResults database={database} searchQuery={activeQuery} isAdmin={isAdmin} onOverride={openOverride} onEdit={openEdit} />
         ) : (
           <View style={styles.resultsViewport}>
             <View style={styles.iconCircle}>
@@ -220,6 +268,44 @@ function SearchWagon({ database }: any) {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Edit Details Modal */}
+      <Modal visible={editModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Edit Asset Details: {selectedAsset?.assetNumber}</Text>
+              
+              <Text style={styles.modalInputLabel}>Asset Number</Text>
+              <TextInput style={styles.modalInput} value={editFields.assetNumber} onChangeText={t => setEditFields({...editFields, assetNumber: t})} />
+              
+              <Text style={styles.modalInputLabel}>Railway Zone</Text>
+              <TextInput style={styles.modalInput} value={editFields.railwayZone} onChangeText={t => setEditFields({...editFields, railwayZone: t})} />
+              
+              <Text style={styles.modalInputLabel}>Track / Line</Text>
+              <TextInput style={styles.modalInput} value={editFields.trackLine} onChangeText={t => setEditFields({...editFields, trackLine: t})} />
+              
+              <Text style={styles.modalInputLabel}>Train Number</Text>
+              <TextInput style={styles.modalInput} value={editFields.trainNumber} onChangeText={t => setEditFields({...editFields, trainNumber: t})} />
+              
+              <Text style={styles.modalInputLabel}>Condition</Text>
+              <TextInput style={styles.modalInput} value={editFields.condition} onChangeText={t => setEditFields({...editFields, condition: t})} />
+              
+              <Text style={styles.modalInputLabel}>Notes / Remarks</Text>
+              <TextInput style={styles.modalInput} value={editFields.remarks} onChangeText={t => setEditFields({...editFields, remarks: t})} />
+              
+              <View style={styles.buttonRow}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditModal(false)}>
+                  <Text style={styles.cancelBtnText}>CANCEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.submitBtn} onPress={submitEdit}>
+                  <Text style={styles.submitBtnText}>SAVE DETAILS</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </>

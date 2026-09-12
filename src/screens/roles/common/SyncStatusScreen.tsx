@@ -79,31 +79,6 @@ export default function SyncStatusScreen({ navigation }: any) {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* Top Operational Banner */}
-        <View style={styles.bannerCard}>
-          <View style={styles.bannerHeader}>
-            <View style={styles.bannerHeaderLeft}>
-              <Icon name="cellphone-wireless" size={20} color="#003c90" style={{ marginRight: 6 }} />
-              <Text style={styles.bannerTitle}>EDGE TELEMETRY • NSY YARD</Text>
-            </View>
-            <View style={styles.activeBadge}>
-              <View style={[styles.activeDot, { marginRight: 4 }]} />
-              <Text style={styles.activeBadgeText}>Store & Forward Active</Text>
-            </View>
-          </View>
-          
-          <View style={styles.bannerBody}>
-            <Image 
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBlPwZ8Ov4GJINu41BLhnwcYeR-ZyBsSpYH0xKFw1PrGLQFIAbDtF2OCVqNgPzUgQ3CQEgcBguegtiCWvnAgATptwyL8HcBEcExK5WUqpFn9To3M0efbTaCbpa-gA_3n8T83b-tWXfYlzPMKdRyG7qhnDgWf-R5G8Fhxdn1x8BuWTJLsnA3YtyqWl63vLdcw4nCK9lEa9uSDkVM8fMuBrrXWxKxRWw6Dbx0kIL2MlMCBdXeUl_c_TcK' }} 
-              style={[styles.bannerImage, { marginRight: 12 }]}
-            />
-            <View style={styles.bannerTextCol}>
-              <Text style={styles.bannerMainText}>Offline Buffer Synchronizer</Text>
-              <Text style={styles.bannerSubText}>Terminal Queue: efcb8bb9-1980-453f</Text>
-            </View>
-          </View>
-        </View>
-
         <View style={styles.screenHeader}>
           <Text style={styles.screenTitle}>SYNC MONITOR</Text>
           <View style={[styles.pendingBadge, stats.pending === 0 && { backgroundColor: '#ccfbf1' }]}>
@@ -151,22 +126,6 @@ export default function SyncStatusScreen({ navigation }: any) {
             <Icon name="sync" size={20} color="#ffffff" style={[syncing ? styles.spinIcon : {}, { marginRight: 8 }]} />
             <Text style={styles.syncBtnText}>{syncing ? 'SYNCING...' : 'SYNC NOW'}</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Bandwidth Visualizer */}
-        <View style={styles.bandwidthCard}>
-          <View style={styles.bandwidthHeader}>
-            <Text style={styles.bandwidthTitle}>BANDWIDTH & RAIL SIGNAL HEALTH</Text>
-            <View style={styles.signalBadge}>
-              <Icon name="access-point-network" size={16} color="#006a63" style={{ marginRight: 4 }} />
-              <Text style={styles.signalText}>98.4% LTE-M</Text>
-            </View>
-          </View>
-          <View style={styles.sparklineRow}>
-            {[30, 40, 30, 60, 70, 50, 80, 60, 40, 20].map((h, i) => (
-              <View key={i} style={[styles.sparklineBar, { height: h, backgroundColor: i === 4 || i === 5 ? '#0f52ba' : i === 6 || i === 7 ? '#006a63' : '#dae2fd' }]} />
-            ))}
-          </View>
         </View>
 
         {/* Queue Operations Section */}

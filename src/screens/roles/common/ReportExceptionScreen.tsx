@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, SafeAreaVie
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../../context/AuthContext';
 import { ExceptionRepository } from '../../../database/v2/repositories/ExceptionRepository';
-import { database } from '../../../database/v2';
+import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
+import withObservables from '@nozbe/with-observables';
+import { Q } from '@nozbe/watermelondb';
 import Asset from '../../../database/v2/models/Asset';
 
 const EXCEPTION_TYPES = [
@@ -20,24 +22,14 @@ const SEVERITIES = [
   { label: 'Critical', value: 'CRITICAL', color: '#ef4444', bg: '#fef2f2' },
 ];
 
-export default function ReportExceptionScreen({ navigation }: any) {
+function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
   const { employeeId } = useAuth();
   
-  const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState('');
   const [type, setType] = useState('MISSING_PARTS');
   const [severity, setSeverity] = useState('HIGH');
   const [reason, setReason] = useState('');
   const [processing, setProcessing] = useState(false);
-
-  useEffect(() => {
-    loadAssets();
-  }, []);
-
-  const loadAssets = async () => {
-    const allAssets = await database.collections.get<Asset>('assets').query().fetch();
-    setAssets(allAssets.filter(a => a.currentStatus !== 'EXCEPTION_LOGGED'));
-  };
 
   const handleSubmit = async () => {
     if (!selectedAssetId) {
@@ -139,7 +131,7 @@ export default function ReportExceptionScreen({ navigation }: any) {
             <Text style={styles.emptyNote}>No active assets available in yard.</Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.assetGrid}>
-              {assets.map(a => {
+              {assets.map((a: Asset) => {
                 const isSelected = selectedAssetId === a.id;
                 return (
                   <TouchableOpacity
@@ -153,6 +145,21 @@ export default function ReportExceptionScreen({ navigation }: any) {
                 );
               })}
             </ScrollView>
+          )}
+
+          {selectedAssetId && (
+            (() => {
+              const selectedAsset = assets.find((a: Asset) => a.id === selectedAssetId);
+              if (!selectedAsset) return null;
+              return (
+                <View style={{ marginTop: 12, padding: 12, backgroundColor: '#f2f3ff', borderRadius: 8, borderWidth: 1, borderColor: '#dae2fd' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#003c90', marginBottom: 4 }}>SELECTED ASSET DETAILS</Text>
+                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Category: {selectedAsset.assetCategory || 'WAGON'}</Text>
+                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Current Status: {selectedAsset.currentStatus}</Text>
+                  <Text style={{ fontSize: 13, color: '#131b2e' }}>Location ID: {selectedAsset.currentLocationId}</Text>
+                </View>
+              );
+            })()
           )}
         </View>
 
@@ -253,6 +260,12 @@ export default function ReportExceptionScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
+
+const enhance = withObservables(['database'], ({ database }: any) => ({
+  assets: database.collections.get('assets').query(Q.where('current_status', Q.notEq('EXCEPTION_LOGGED'))).observe()
+}));
+
+export default withDatabase(enhance(ReportExceptionScreenBase));
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
