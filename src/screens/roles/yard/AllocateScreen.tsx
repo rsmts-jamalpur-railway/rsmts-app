@@ -50,10 +50,10 @@ export default function AllocateScreen({ navigation }: any) {
       setIsLoadingList(true);
       const assetsTable = database.collections.get<Asset>('assets');
       
-      // Fetch assets in yard awaiting allocation (RECEIVED_IN_YARD is set by backend on YARD_INTAKE)
+      // Fetch assets in yard awaiting allocation or already allocated but still in yard
       const yardAssets = await assetsTable
         .query(
-          Q.where('current_status', Q.oneOf(['RECEIVED_IN_YARD']))
+          Q.where('current_status', Q.oneOf(['RECEIVED_IN_YARD', 'Allocated']))
         )
         .fetch();
       setUnallocatedAssets(yardAssets);
@@ -127,6 +127,43 @@ export default function AllocateScreen({ navigation }: any) {
     }
   };
 
+  const handleCancelArrival = () => {
+    if (!foundAsset) return;
+
+    Alert.alert(
+      'Cancel Arrival',
+      `Are you sure you want to cancel the yard entry for ${foundAsset.assetNumber}? This will mark it as Cancelled Entry.`,
+      [
+        { text: 'No', style: 'cancel' },
+        { 
+          text: 'Yes, Cancel Entry', 
+          style: 'destructive',
+          onPress: async () => {
+            setIsSubmitting(true);
+            try {
+              await YardRepository.cancelArrival({
+                assetId: foundAsset.id,
+                userId: employeeId || 'UNKNOWN',
+              });
+              Alert.alert('Success', `Arrival for ${foundAsset.assetNumber} cancelled.`, [
+                { text: 'OK', onPress: () => {
+                  setFoundAsset(null);
+                  setAssetNumber('');
+                  loadYardData();
+                }}
+              ]);
+            } catch (error: any) {
+              console.error('Cancel arrival error:', error);
+              Alert.alert('Error', error?.message || 'Failed to cancel arrival.');
+            } finally {
+              setIsSubmitting(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -141,7 +178,7 @@ export default function AllocateScreen({ navigation }: any) {
       {/* Quick Select from NSY */}
       <View style={styles.formGroup}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.label}>Unallocated Stock in NSY ({unallocatedAssets.length})</Text>
+          <Text style={styles.label}>Stock in Yard ({unallocatedAssets.length})</Text>
           <TouchableOpacity onPress={loadYardData}>
             <Icon name="refresh" size={18} color="#0A74DA" />
           </TouchableOpacity>
@@ -174,9 +211,11 @@ export default function AllocateScreen({ navigation }: any) {
                   <Text style={[styles.stockMeta, isSelected && styles.stockTextSelected]}>
                     Loc: {asset.currentLocationId}
                   </Text>
-                  <Text style={[styles.stockStatus, isSelected && styles.stockTextSelected]}>
-                    {asset.currentStatus}
-                  </Text>
+                  <View style={[styles.statusBadge, asset.currentStatus === 'Allocated' ? styles.statusAllocated : styles.statusReceived, isSelected && styles.statusBadgeSelected]}>
+                    <Text style={[styles.stockStatus, asset.currentStatus === 'Allocated' ? styles.statusTextAllocated : styles.statusTextReceived, isSelected && styles.stockTextSelected]}>
+                      {asset.currentStatus}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -272,17 +311,30 @@ export default function AllocateScreen({ navigation }: any) {
         </View>
       </View>
 
-      {/* Submit Button */}
-      <TouchableOpacity 
-        style={[styles.submitBtn, (!foundAsset || isSubmitting) && styles.submitBtnDisabled]} 
-        onPress={handleAllocate}
-        disabled={!foundAsset || isSubmitting}
-      >
-        <Icon name="check-circle-outline" size={20} color="#FFFFFF" />
-        <Text style={styles.submitBtnText}>
-          {isSubmitting ? 'RECORDING ALLOCATION...' : `ALLOCATE TO ${selectedShop}`}
-        </Text>
-      </TouchableOpacity>
+      {/* Submit Buttons */}
+      <View style={styles.actionButtons}>
+        {foundAsset?.currentStatus === 'RECEIVED_IN_YARD' && (
+          <TouchableOpacity 
+            style={[styles.cancelBtn, isSubmitting && styles.submitBtnDisabled]} 
+            onPress={handleCancelArrival}
+            disabled={isSubmitting}
+          >
+            <Icon name="close-circle-outline" size={20} color="#ef4444" />
+            <Text style={styles.cancelBtnText}>CANCEL ARRIVAL</Text>
+          </TouchableOpacity>
+        )}
+        
+        <TouchableOpacity 
+          style={[styles.submitBtn, (!foundAsset || isSubmitting) && styles.submitBtnDisabled]} 
+          onPress={handleAllocate}
+          disabled={!foundAsset || isSubmitting}
+        >
+          <Icon name="check-circle-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.submitBtnText}>
+            {isSubmitting ? 'RECORDING ALLOCATION...' : (foundAsset?.currentStatus === 'Allocated' ? `REALLOCATE TO ${selectedShop}` : `ALLOCATE TO ${selectedShop}`)}
+          </Text>
+        </TouchableOpacity>
+      </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -370,9 +422,29 @@ const styles = StyleSheet.create({
   },
   stockStatus: {
     fontSize: 10,
+    fontWeight: '700',
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  statusReceived: {
+    backgroundColor: '#e0f2fe',
+  },
+  statusAllocated: {
+    backgroundColor: '#fef3c7',
+  },
+  statusTextReceived: {
     color: '#0284c7',
-    fontWeight: '600',
-    marginTop: 2,
+  },
+  statusTextAllocated: {
+    color: '#d97706',
+  },
+  statusBadgeSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
   stockTextSelected: {
     color: '#FFFFFF',
@@ -526,6 +598,29 @@ const styles = StyleSheet.create({
   },
   submitBtnText: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  actionButtons: {
+    flexDirection: 'column',
+    gap: 12,
+    marginTop: 12,
+    marginBottom: 36,
+  },
+  cancelBtn: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 10,
+    gap: 8,
+  },
+  cancelBtnText: {
+    color: '#ef4444',
     fontSize: 14,
     fontWeight: 'bold',
     letterSpacing: 0.5,

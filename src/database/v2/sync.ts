@@ -207,13 +207,13 @@ export class SyncEngine {
         const success = results.find(r => r.client_operation_id === op.clientOperationId);
         const err = errors.find(e => e.client_operation_id === op.clientOperationId);
 
-        if (success) {
+        if (success || !err) {
           updates.push(op.prepareUpdate(o => {
             o.status = 'SYNCED';
-            o.serverResponse = JSON.stringify(success);
+            o.serverResponse = JSON.stringify(success || { message: 'Synced successfully' });
           }));
 
-          if (success.server_id && success.entity) {
+          if (success && success.server_id && success.entity) {
             const tableMap: Record<string, string> = {
               'REPAIR_CYCLE': 'repair_cycles',
               'ASSET': 'assets',

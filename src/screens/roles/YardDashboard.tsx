@@ -20,6 +20,7 @@ interface YardDashboardProps {
 function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLogs = [] }: YardDashboardProps) {
   const { employeeId, can } = useAuth();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [expandedLogId, setExpandedLogId] = React.useState<string | null>(null);
 
   const nsyCap = nsyLocation.length > 0 ? nsyLocation[0].maxCapacity : 500;
   const inYardCount = assets.filter(a => a.currentLocationId === 'NSY' || a.currentLocationId === 'YARD').length;
@@ -45,30 +46,6 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
-      {/* Yard Operations Info Card */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoRow}>
-          <View style={styles.infoIconBox}>
-            <Icon name="city" size={18} color="#003c90" />
-          </View>
-          <View style={styles.infoTextCol}>
-            <View style={styles.infoTextRow}>
-              <Text style={styles.infoLabel}>YARD OPERATIONS</Text>
-              <Text style={styles.infoDot}>•</Text>
-              <Text style={styles.infoRole}>Yard Master</Text>
-            </View>
-            <View style={styles.infoTextRow}>
-              <Icon name="map-marker" size={14} color="#003c90" />
-              <Text style={styles.infoUUID} numberOfLines={1}>{employeeId || 'efcb8bb9-1980-453f'}</Text>
-            </View>
-          </View>
-          <View style={styles.activeBadge}>
-            <View style={styles.activeDot} />
-            <Text style={styles.activeBadgeText}>Active</Text>
-          </View>
-        </View>
-      </View>
-
       {/* Yard Status Section */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Yard Status</Text>
@@ -211,15 +188,18 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
              <Text style={{ color: '#737784', fontStyle: 'italic' }}>No recent movements recorded yet.</Text>
            </View>
         ) : (
-          recentLogs.map((log, index) => (
+          recentLogs.map((log, index) => {
+            const asset = assets.find(a => a.id === log.assetId);
+            const assetDisplay = asset ? asset.assetNumber : log.assetId;
+            return (
             <View key={log.id}>
-              <View style={styles.activityItem}>
+              <TouchableOpacity style={styles.activityItem} onPress={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}>
                 <View style={styles.activityIconBox}>
                   <Icon name="swap-horizontal" size={20} color="#003c90" />
                 </View>
                 <View style={styles.activityTextCol}>
                   <View style={styles.activityItemHeader}>
-                    <Text style={styles.activityItemTitle} numberOfLines={1}>{log.previousStatus || 'Yard'} to {log.newStatus}</Text>
+                    <Text style={styles.activityItemTitle} numberOfLines={1}>Asset {assetDisplay}: {log.previousStatus || 'Yard'} to {log.newStatus}</Text>
                     <Text style={styles.activityItemTime}>{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                   </View>
                   <Text style={styles.activityItemSub} numberOfLines={1}>{log.fromLocationId || 'YARD'} to {log.toLocationId}</Text>
@@ -230,12 +210,43 @@ function YardDashboardBase({ navigation, assets = [], nsyLocation = [], recentLo
                       <Text style={styles.activityTagText}>{log.newStatus}</Text>
                     </View>
                     <Text style={styles.activitySynced}>Synced</Text>
+                    <Icon name={expandedLogId === log.id ? "chevron-up" : "chevron-down"} size={16} color="#434653" style={{marginLeft: 'auto'}} />
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
+              
+              {expandedLogId === log.id && (
+                <View style={styles.expandedDetails}>
+                  {asset ? (
+                    <>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Asset Category:</Text>
+                        <Text style={styles.detailValue}>{asset.assetCategory || 'WAGON'}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Current Track:</Text>
+                        <Text style={styles.detailValue}>{asset.currentLocationId}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Current Status:</Text>
+                        <Text style={styles.detailValue}>{asset.currentStatus}</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.detailLabel}>Asset details currently unavailable.</Text>
+                  )}
+                  {log.remarks ? (
+                    <View style={[styles.detailRow, { marginTop: 8 }]}>
+                      <Text style={styles.detailLabel}>Remarks:</Text>
+                      <Text style={styles.detailValue}>{log.remarks}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              )}
               {index < recentLogs.length - 1 && <View style={styles.divider} />}
             </View>
-          ))
+            );
+          })
         )}
       </View>
       
@@ -316,5 +327,26 @@ const styles = StyleSheet.create({
   activityTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#e2e7ff', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginRight: 6 },
   activityTagText: { fontSize: 11, fontWeight: '600', color: '#434653' },
   activitySynced: { fontSize: 10, fontWeight: '700', color: '#434653', textTransform: 'uppercase', letterSpacing: 0.8 },
-  divider: { height: 1, backgroundColor: '#eaedff', marginHorizontal: 14 }
+  divider: { height: 1, backgroundColor: '#eaedff', marginHorizontal: 14 },
+  expandedDetails: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    marginLeft: 48,
+    marginTop: -4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    width: 100,
+  },
+  detailValue: {
+    fontSize: 12,
+    color: '#0f172a',
+    fontWeight: '500',
+    flex: 1,
+  }
 });
