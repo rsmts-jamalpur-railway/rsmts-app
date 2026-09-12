@@ -49,9 +49,10 @@ export default function ReportExceptionScreen({ navigation }: any) {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        const data = await res.json();
+        const pipeData = await res.json();
+        const data = pipeData.data || [];
         // Filter out assets that already have an open exception
-        setAssets(data.filter((a: any) => a.operational_status !== 'EXCEPTION_LOGGED'));
+        setAssets(data.filter((a: any) => a.current_status !== 'EXCEPTION_LOGGED'));
       }
     } catch (error) {
       console.error('Failed to fetch assets', error);

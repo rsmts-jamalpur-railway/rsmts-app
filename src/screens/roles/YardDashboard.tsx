@@ -41,7 +41,8 @@ export default function YardDashboardBase({ navigation }: YardDashboardProps) {
       const locRes = await fetch(`${API_BASE_URL}/dashboard/locations`, { headers });
       let nsyCap = 500;
       if (locRes.ok) {
-        const locations = await locRes.json();
+        const locResponse = await locRes.json();
+        const locations = locResponse.data || [];
         const nsy = locations.find((l: any) => l.location_id === 'NSY');
         if (nsy && nsy.max_capacity) nsyCap = nsy.max_capacity;
       }
@@ -50,11 +51,12 @@ export default function YardDashboardBase({ navigation }: YardDashboardProps) {
       const pipelineRes = await fetch(`${API_BASE_URL}/dashboard/pipeline?pipeline=ALL`, { headers });
       let inYardCount = 0, awaitingAllocation = 0, readyForDispatch = 0, inRepairCount = 0;
       if (pipelineRes.ok) {
-        const assets = await pipelineRes.json();
+        const pipeResponse = await pipelineRes.json();
+        const assets = pipeResponse.data || [];
         inYardCount = assets.filter((a: any) => a.current_location === 'NSY' || a.current_location === 'YARD').length;
-        awaitingAllocation = assets.filter((a: any) => a.operational_status === 'RECEIVED_IN_YARD').length;
-        readyForDispatch = assets.filter((a: any) => a.operational_status === 'FIT').length;
-        inRepairCount = assets.filter((a: any) => a.operational_status === 'IN_REPAIR').length;
+        awaitingAllocation = assets.filter((a: any) => a.current_status === 'RECEIVED_IN_YARD').length;
+        readyForDispatch = assets.filter((a: any) => a.current_status === 'FIT').length;
+        inRepairCount = assets.filter((a: any) => a.current_status === 'IN_REPAIR').length;
       }
 
       setMetrics({ nsyCap, inYardCount, awaitingAllocation, readyForDispatch, inRepairCount });
@@ -62,7 +64,8 @@ export default function YardDashboardBase({ navigation }: YardDashboardProps) {
       // Fetch Movements
       const movRes = await fetch(`${API_BASE_URL}/movements?limit=6`, { headers });
       if (movRes.ok) {
-        const logs = await movRes.json();
+        const movResponse = await movRes.json();
+        const logs = movResponse.data || [];
         setRecentLogs(logs);
       }
     } catch (error) {

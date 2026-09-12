@@ -119,12 +119,13 @@ export default function SearchWagon() {
       });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
+      const overviewData = data.data || {};
       
-      const inYard = data.assets_by_state?.find((d: any) => d.operational_status === 'RECEIVED_IN_YARD')?.count || 0;
-      const allocated = data.assets_by_state?.find((d: any) => d.operational_status === 'ALLOCATED')?.count || 0;
-      const exception = data.assets_by_state?.find((d: any) => d.operational_status === 'EXCEPTION_LOGGED')?.count || 0;
+      const inYard = overviewData.total_active_assets - (overviewData.repair_active + overviewData.manufacturing_active + overviewData.dispatched_today);
+      const allocated = overviewData.repair_active + overviewData.manufacturing_active;
+      const exception = overviewData.open_exceptions_count || 0;
       
-      setOverview({ inYard, allocated, exception });
+      setOverview({ inYard: inYard > 0 ? inYard : 0, allocated, exception });
     } catch (e) {
       console.warn('Overview fetch failed', e);
     }
@@ -152,7 +153,7 @@ export default function SearchWagon() {
       });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
-      setSearchResults(data);
+      setSearchResults(data.data || []);
     } catch (e) {
       console.warn('Search fetch failed', e);
       Alert.alert('Error', 'Failed to perform real-time search');

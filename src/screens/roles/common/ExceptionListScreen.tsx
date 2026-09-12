@@ -37,7 +37,7 @@ export default function ExceptionListScreen({ navigation }: any) {
       });
       if (res.ok) {
         const data = await res.json();
-        setExceptions(data);
+        setExceptions(data.data || []);
       }
     } catch (error) {
       console.error('Failed to fetch exceptions', error);

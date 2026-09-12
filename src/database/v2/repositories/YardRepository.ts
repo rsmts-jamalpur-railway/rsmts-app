@@ -53,6 +53,17 @@ async function performRealtimePush(commandType: string, payload: any) {
     throw new Error(`Failed to push to server: ${response.statusText}`);
   }
 
+  const responseData = await response.json();
+  if (responseData.errors && responseData.errors.length > 0) {
+    const errorMsg = responseData.errors[0].message || 'Server validation failed';
+    Toast.show({
+      type: 'error',
+      text1: 'Action Failed',
+      text2: errorMsg
+    });
+    throw new Error(errorMsg);
+  }
+
   // Pull latest data to update UI instantly
   await SyncEngine.sync();
 }
