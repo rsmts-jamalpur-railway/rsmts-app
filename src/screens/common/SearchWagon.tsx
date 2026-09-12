@@ -9,7 +9,6 @@ import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../config';
-import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 
 const SearchResults = ({ assets, isAdmin, onOverride, onEdit }: any) => {
