@@ -40,7 +40,7 @@ const SearchResults = ({ assets, isAdmin, onOverride }: { assets: Asset[], isAdm
                 <Text style={styles.resultBadgeText}>{asset.currentStatus}</Text>
               </View>
             </View>
-            
+
             <View style={styles.resultGrid}>
               <View style={styles.resultGridItem}>
                 <Text style={styles.resultGridLabel}>CURRENT LOCATION</Text>
@@ -85,10 +85,7 @@ function SearchWagon({ database }: any) {
     setActiveQuery(query.toUpperCase().trim());
   };
 
-  const handleChipClick = (assetNo: string) => {
-    setQuery(assetNo);
-    setActiveQuery(assetNo);
-  };
+
 
   const openOverride = (asset: Asset) => {
     setSelectedAsset(asset);
@@ -125,23 +122,6 @@ function SearchWagon({ database }: any) {
   return (
     <>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        
-        {/* Top Banner */}
-        <View style={styles.topBanner}>
-          <View style={styles.topBannerLeft}>
-            <View style={styles.radarIconBox}>
-              <Icon name="radar" size={20} color="#003c90" />
-            </View>
-            <View>
-              <Text style={styles.bannerZone}>Yard Zone NSY-04</Text>
-              <Text style={styles.bannerOnline}>Telemetry Online • 312 Tracked Units</Text>
-            </View>
-          </View>
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
-          </View>
-        </View>
 
         {/* Primary Search Card */}
         <View style={styles.searchCard}>
@@ -152,11 +132,11 @@ function SearchWagon({ database }: any) {
             </View>
           </View>
           <Text style={styles.searchDesc}>Lookup locomotives, hopper cars, intermodal containers, or maintenance bogeys.</Text>
-          
+
           <View style={styles.searchRow}>
             <View style={styles.inputWrap}>
               <Icon name="tag" size={20} color="#737784" style={styles.inputIcon} />
-              <TextInput 
+              <TextInput
                 style={styles.searchInput}
                 placeholder="ENTER ASSET NUMBER..."
                 placeholderTextColor="#737784"
@@ -184,41 +164,7 @@ function SearchWagon({ database }: any) {
           </View>
         </View>
 
-        {/* Recent Tracked Assets */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recently Tracked Assets</Text>
-          <Text style={styles.tapToQuery}>TAP TO QUERY</Text>
-        </View>
-        <View style={styles.chipsGrid}>
-          <TouchableOpacity style={styles.chipBtn} onPress={() => handleChipClick('WGN-8842')}>
-            <View style={styles.chipLeft}>
-              <Icon name="train" size={18} color="#003c90" />
-              <Text style={styles.chipText}>WGN-8842</Text>
-            </View>
-            <View style={styles.chipDotSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.chipBtn} onPress={() => handleChipClick('BOX-1093')}>
-            <View style={styles.chipLeft}>
-              <Icon name="package-variant-closed" size={18} color="#737784" />
-              <Text style={styles.chipText}>BOX-1093</Text>
-            </View>
-            <View style={styles.chipDotAmber} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.chipBtn} onPress={() => handleChipClick('FLAT-4401')}>
-            <View style={styles.chipLeft}>
-              <Icon name="view-day" size={18} color="#737784" />
-              <Text style={styles.chipText}>FLAT-4401</Text>
-            </View>
-            <View style={styles.chipDotSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.chipBtn} onPress={() => handleChipClick('TANK-2104')}>
-            <View style={styles.chipLeft}>
-              <Icon name="alert-circle" size={18} color="#860024" />
-              <Text style={styles.chipText}>TANK-2104</Text>
-            </View>
-            <View style={styles.chipDotError} />
-          </TouchableOpacity>
-        </View>
+
 
         {/* Results Area */}
         {activeQuery ? (
@@ -230,7 +176,7 @@ function SearchWagon({ database }: any) {
             </View>
             <Text style={styles.resultsTitle}>Awaiting Asset Identifier</Text>
             <Text style={styles.resultsDesc}>Enter an asset number above to track its current location and status in the yard.</Text>
-            
+
             <View style={styles.quickMetricsRow}>
               <View style={styles.quickMetricBox}>
                 <Text style={styles.quickMetricValue}>148</Text>
@@ -256,9 +202,9 @@ function SearchWagon({ database }: any) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Admin Override: {selectedAsset?.assetNumber}</Text>
             <Text style={styles.modalSubtitle}>Warning: Force changing a status skips normal validation checks. Use only for system corrections.</Text>
-            
+
             <Text style={styles.modalInputLabel}>New Status</Text>
-            <TextInput 
+            <TextInput
               style={styles.modalInput}
               value={overrideStatus}
               onChangeText={setOverrideStatus}
@@ -301,42 +247,32 @@ const styles = StyleSheet.create({
   rfidBadge: { backgroundColor: '#eaedff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   rfidBadgeText: { fontSize: 11, fontWeight: '700', color: '#003c90', letterSpacing: 0.4 },
   searchDesc: { fontSize: 12, color: '#434653', marginBottom: 16 },
-  
+
   searchRow: { flexDirection: 'row', gap: 8 },
   inputWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f2f3ff', borderRadius: 8, borderWidth: 2, borderColor: 'transparent' },
   inputIcon: { marginLeft: 12 },
-  searchInput: { flex: 1, height: 48, paddingHorizontal: 10, color: '#131b2e', fontSize: 15, fontWeight: '600' },
+  searchInput: { flex: 1, height: 48, paddingHorizontal: 10, color: '#131b2e', fontSize: 10, fontWeight: '600' },
   scanBtn: { width: 36, height: 36, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
   searchBtn: { width: 48, height: 48, backgroundColor: '#0f52ba', borderRadius: 8, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-  
+
   formatAssistance: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 6 },
   formatAssistanceText: { fontSize: 11, color: '#737784', fontWeight: '700' },
   clearText: { fontSize: 11, color: '#003c90', fontWeight: '700' },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 12, fontWeight: '700', color: '#434653', letterSpacing: 0.8, textTransform: 'uppercase' },
-  tapToQuery: { fontSize: 11, fontWeight: '700', color: '#737784', letterSpacing: 0.4 },
 
-  chipsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
-  chipBtn: { width: '48%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  chipLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  chipText: { fontSize: 11, fontWeight: '700', fontFamily: 'monospace', color: '#131b2e' },
-  chipDotSecondary: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#006a63' },
-  chipDotAmber: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#f59e0b' },
-  chipDotError: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ba1a1a' },
 
   resultsViewport: { backgroundColor: '#ffffff', borderRadius: 16, padding: 24, alignItems: 'center', justifyContent: 'center', minHeight: 290, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#eaedff', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   resultsTitle: { fontSize: 17, fontWeight: '600', color: '#131b2e', marginBottom: 4 },
   resultsDesc: { fontSize: 14, color: '#434653', textAlign: 'center', paddingHorizontal: 20, marginBottom: 24 },
-  
+
   quickMetricsRow: { flexDirection: 'row', gap: 8, width: '100%', borderTopWidth: 1, borderTopColor: '#eaedff', paddingTop: 16 },
   quickMetricBox: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f2f3ff', borderRadius: 8, padding: 8, minHeight: 64 },
   quickMetricValue: { fontSize: 22, fontWeight: '700', color: '#131b2e' },
   quickMetricLabel: { fontSize: 11, fontWeight: '600', color: '#737784', letterSpacing: 0.8, textTransform: 'uppercase' },
 
   resultsContainer: { marginTop: 12, padding: 16, backgroundColor: '#ffffff', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  resultCard: { },
+  resultCard: {},
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eaedff', paddingBottom: 12, marginBottom: 12 },
   resultHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   resultIconBox: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#003c90', alignItems: 'center', justifyContent: 'center' },
@@ -344,7 +280,7 @@ const styles = StyleSheet.create({
   resultClass: { fontSize: 12, color: '#434653' },
   resultBadge: { backgroundColor: '#9cf2e8', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   resultBadgeText: { fontSize: 11, fontWeight: '700', color: '#00504a' },
-  
+
   resultGrid: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   resultGridItem: { flex: 1, backgroundColor: '#f2f3ff', padding: 8, borderRadius: 8 },
   resultGridLabel: { fontSize: 11, fontWeight: '700', color: '#737784', textTransform: 'uppercase', marginBottom: 2 },
