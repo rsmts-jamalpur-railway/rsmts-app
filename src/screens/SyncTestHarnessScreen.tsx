@@ -136,7 +136,7 @@ export default function SyncTestHarnessScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, padding: 16, backgroundColor: '#FFFFFF' },
   title: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
   subtitle: { fontSize: 16, fontWeight: 'bold', marginTop: 16, marginBottom: 8 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },

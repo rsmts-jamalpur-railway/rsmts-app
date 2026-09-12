@@ -259,7 +259,7 @@ export default function SyncStatusScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#faf8ff' },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { flex: 1 },
   content: { padding: 16 },
 

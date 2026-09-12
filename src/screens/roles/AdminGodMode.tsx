@@ -502,7 +502,7 @@ const enhance = withObservables([], () => ({
 export default enhance(AdminGodModeComponent);
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   adminHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

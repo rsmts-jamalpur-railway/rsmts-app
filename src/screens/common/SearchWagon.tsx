@@ -229,7 +229,7 @@ function SearchWagon({ database }: any) {
 export default withDatabase(SearchWagon);
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#faf8ff' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { padding: 16, paddingTop: 16 },
 
   topBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#f2f3ff', borderRadius: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   quickMetricValue: { fontSize: 22, fontWeight: '700', color: '#131b2e' },
   quickMetricLabel: { fontSize: 11, fontWeight: '600', color: '#737784', letterSpacing: 0.8, textTransform: 'uppercase' },
 
-  resultsContainer: { marginTop: 12, padding: 16, backgroundColor: '#ffffff', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  resultsContainer: { marginTop: 12, padding: 16, backgroundColor: '#FFFFFF', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   resultCard: {},
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eaedff', paddingBottom: 12, marginBottom: 12 },
   resultHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },

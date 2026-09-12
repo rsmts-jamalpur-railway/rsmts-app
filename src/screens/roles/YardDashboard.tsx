@@ -267,7 +267,7 @@ const enhance = withObservables(['database'], ({ database }: any) => ({
 export default withDatabase(enhance(YardDashboardBase));
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#faf8ff' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { padding: 16, paddingTop: 16 },
   
   infoCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(195,198,213,0.3)', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },

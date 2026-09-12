@@ -260,7 +260,7 @@ function QAFlowBase({ database }: any) {
 export default withDatabase(QAFlowBase);
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { padding: 16 },
   card: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
   cardTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700', marginBottom: 16 },

@@ -29,7 +29,7 @@ const TRACK_LINES = [
 
 export default function NSYInScreen({ navigation }: any) {
   const { employeeId, assignedLocationId } = useAuth();
-  
+
   const [assetNumber, setAssetNumber] = useState('');
   const [category, setCategory] = useState<'WAGON' | 'LOCO' | 'CRANE' | 'TOWER_CAR'>('WAGON');
   const [selectedRailway, setSelectedRailway] = useState('ER');
@@ -53,7 +53,7 @@ export default function NSYInScreen({ navigation }: any) {
   const handleAssetChange = (text: string) => {
     const cleaned = text.trim();
     setAssetNumber(cleaned);
-    
+
     if (!assetNumber && cleaned.length >= 3) {
       const detected = detectAssetCategory(cleaned);
       if (detected !== 'UNKNOWN' && detected !== category) {
@@ -122,26 +122,22 @@ export default function NSYInScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{top:10,bottom:10,left:10,right:10}}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Icon name="arrow-left" size={24} color="#131b2e" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>NSY INTAKE</Text>
-          <View style={{width: 40}} />
+          <View style={{ width: 40 }} />
         </View>
 
         <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          
+
           <View style={styles.bannerCard}>
             <View style={styles.bannerHeader}>
               <View style={styles.bannerHeaderLeft}>
                 <Icon name="train-car" size={20} color="#003c90" />
                 <Text style={styles.bannerTitle}>ROLLING STOCK REGISTRATION</Text>
-              </View>
-              <View style={styles.activeBadge}>
-                <View style={styles.activeDot} />
-                <Text style={styles.activeBadgeText}>Intake Mode</Text>
               </View>
             </View>
             <Text style={styles.bannerDesc}>Record arrival of rolling stock into NSY Yard limits. Assets will be available for allocation after successful intake.</Text>
@@ -193,14 +189,14 @@ export default function NSYInScreen({ navigation }: any) {
                   name={validation.isValid ? 'check-circle' : 'alert-circle'}
                   size={24}
                   color={validation.isValid ? '#006a63' : '#ba1a1a'}
-                  style={{marginRight: 16}}
+                  style={{ marginRight: 16 }}
                 />
               )}
             </View>
             {validation && !validation.isValid && (
               <Text style={styles.errorText}>{validation.message}</Text>
             )}
-            
+
             {validation?.autoFix && (
               <TouchableOpacity style={styles.autoFixBtn} onPress={() => applyAutoFix(validation.autoFix!)}>
                 <Icon name="wand" size={16} color="#0f52ba" />
@@ -238,7 +234,7 @@ export default function NSYInScreen({ navigation }: any) {
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>OWNING RAILWAY ZONE</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll} contentContainerStyle={{gap: 8}}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll} contentContainerStyle={{ gap: 8 }}>
               {RAILWAY_ZONES.map((rz) => {
                 const isSelected = selectedRailway === rz.code;
                 return (
@@ -303,8 +299,8 @@ export default function NSYInScreen({ navigation }: any) {
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={[styles.submitBtn, (isSubmitting || (validation && !validation.isValid)) && styles.submitBtnDisabled]} 
+          <TouchableOpacity
+            style={[styles.submitBtn, (isSubmitting || (validation && !validation.isValid)) && styles.submitBtnDisabled]}
             onPress={handleSave}
             disabled={isSubmitting || (validation ? !validation.isValid : false)}
             activeOpacity={0.8}
@@ -312,7 +308,7 @@ export default function NSYInScreen({ navigation }: any) {
             <Icon name="arrow-down-box" size={24} color="#ffffff" />
             <Text style={styles.submitBtnText}>{isSubmitting ? 'RECORDING...' : 'REGISTER INBOUND ASSET'}</Text>
           </TouchableOpacity>
-          <View style={{height: 40}} />
+          <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -324,11 +320,11 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 20 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#131b2e', letterSpacing: -0.5 },
-  
+
   container: { flex: 1 },
   content: { padding: 16 },
 
-  bannerCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, marginBottom: 24, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  bannerCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   bannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   bannerHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   bannerTitle: { fontSize: 11, fontWeight: '700', color: '#737784', letterSpacing: 0.5 },
@@ -352,7 +348,7 @@ const styles = StyleSheet.create({
   inputInvalid: { borderColor: '#ba1a1a', backgroundColor: '#fffbfa' },
   input: { flex: 1, fontSize: 16, color: '#131b2e', padding: 16 },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
-  
+
   errorText: { color: '#ba1a1a', fontSize: 12, marginTop: 4, fontWeight: '500' },
   autoFixBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f2f3ff', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginTop: 8 },
   autoFixText: { fontSize: 12, fontWeight: '600', color: '#0f52ba' },
@@ -379,7 +375,7 @@ const styles = StyleSheet.create({
   trackChipText: { fontSize: 13, fontWeight: '600', color: '#434653' },
   trackChipTextActive: { color: '#006a63' },
 
-  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#0f52ba', borderRadius: 12, paddingVertical: 16, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#0f52ba', borderRadius: 12, paddingVertical: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
   submitBtnDisabled: { backgroundColor: '#94a3b8' },
   submitBtnText: { fontSize: 15, fontWeight: '700', color: '#ffffff', letterSpacing: 0.5 },
 });

@@ -29,7 +29,7 @@ function HeaderBase({ title, onBack, onSync, pendingOperations = [] }: HeaderPro
       onSync();
       return;
     }
-    
+
     setIsSyncing(true);
     try {
       await SyncEngine.sync();
@@ -97,7 +97,7 @@ function HeaderBase({ title, onBack, onSync, pendingOperations = [] }: HeaderPro
         <View style={styles.logoContainer}>
           <Image source={require('../assets/logo_bg_removed.png')} style={styles.logoImage} resizeMode="contain" />
         </View>
-        
+
         <View style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
           <View style={styles.rightControls}>
             {isSuperUser && (
@@ -117,7 +117,7 @@ function HeaderBase({ title, onBack, onSync, pendingOperations = [] }: HeaderPro
                 {isSyncing ? 'Syncing...' : (pendingCount > 0 ? `${pendingCount} Pending` : 'Synced')}
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity onPress={handleLogout} style={{ marginLeft: 12 }}>
               <Icon name="logout" size={22} color="#ef4444" />
             </TouchableOpacity>
@@ -125,8 +125,6 @@ function HeaderBase({ title, onBack, onSync, pendingOperations = [] }: HeaderPro
           <Text style={styles.locationTextSmall}>{assignedLocationId || 'Jamalpur Workshop'}</Text>
         </View>
       </View>
-      
-      <View style={styles.divider} />
 
       <View style={styles.userRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
@@ -204,17 +202,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginRight: 34, // Align roughly under the sync button, accounting for the logout icon
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
-    marginBottom: 12,
-    marginTop: 12,
-  },
   userRow: {
     flexDirection: 'column',
   },
   roleText: {
-    fontSize: 14,
+    fontSize: 8,
     fontWeight: '800',
     color: '#0f172a',
   },

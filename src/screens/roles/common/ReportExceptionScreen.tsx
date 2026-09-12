@@ -255,10 +255,10 @@ export default function ReportExceptionScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#faf8ff' },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { flex: 1 },
   content: { padding: 16 },
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#faf8ff' },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
   loadingText: { marginTop: 16, color: '#434653', fontSize: 15, fontWeight: '600' },
 
   subHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },

@@ -81,7 +81,7 @@ export default function QAMfgListScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9', padding: 16 },
+  container: { flex: 1, backgroundColor: '#FFFFFF', padding: 16 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   backBtn: { padding: 8, marginRight: 8, marginLeft: -8 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },

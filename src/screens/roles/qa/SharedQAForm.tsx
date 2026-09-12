@@ -214,7 +214,7 @@ export default function SharedQAForm({ assetNumber, sourceContext, sourceId, onS
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, flex: 1, backgroundColor: '#f8fafc' },
+  container: { padding: 16, flex: 1, backgroundColor: '#FFFFFF' },
   loadingContainer: { alignItems: 'center', justifyContent: 'center', padding: 48 },
   loadingText: { marginTop: 16, color: '#64748b', fontSize: 14, fontWeight: '600' },
   contextCard: {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,6 +21,14 @@ import { View, Text } from 'react-native';
 
 import AppTabs from './AppTabs';
 
+const WhiteTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#FFFFFF',
+  },
+};
+
 export default function RootNavigator() {
   const { role, isLoading } = useAuth();
 
@@ -30,7 +38,7 @@ export default function RootNavigator() {
 
   // The Role Resolver
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={WhiteTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {role === null ? (
           <Stack.Screen name="Login" component={LoginScreen} />

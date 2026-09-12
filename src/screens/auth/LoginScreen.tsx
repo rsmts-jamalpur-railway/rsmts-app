@@ -74,14 +74,6 @@ export default function LoginScreen() {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {/* TopBar equivalent */}
-          <View style={styles.topBar}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={styles.emeraldDot} />
-              <Text style={styles.topBarText}>EASTERN RAILWAY</Text>
-            </View>
-            <Text style={styles.topBarTextMuted}>JMPW • OPS-APP</Text>
-          </View>
 
           <View style={styles.header}>
             <View style={styles.titleRow}>
@@ -178,10 +170,6 @@ export default function LoginScreen() {
             <Text style={styles.footerText}>
               Don't have an account? <Text style={styles.footerLink}>Contact administrator</Text>
             </Text>
-            <View style={styles.systemStatusRow}>
-              <View style={styles.emeraldDotSmall} />
-              <Text style={styles.systemStatusText}>System: Operational • ER-DIV-JMP • 256-Bit Encrypted</Text>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
