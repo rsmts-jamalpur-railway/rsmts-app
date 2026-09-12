@@ -76,7 +76,7 @@ const ObservableSearchResults = withObservables(['searchQuery', 'database'], ({ 
   assets: searchQuery ? database.collections.get('assets').query(Q.where('asset_number', Q.like(`%${searchQuery}%`))).observe() : []
 }))(({ assets, isAdmin, onOverride, onEdit }: any) => <SearchResults assets={assets} isAdmin={isAdmin} onOverride={onOverride} onEdit={onEdit} />);
 
-function SearchWagon({ database }: any) {
+function SearchWagonBase({ database, assets = [] }: any) {
   const { role, employeeId } = useAuth();
   const isAdmin = role === 'SYSTEM_ADMIN' || role === 'MANAGEMENT';
 
@@ -227,15 +227,15 @@ function SearchWagon({ database }: any) {
 
             <View style={styles.quickMetricsRow}>
               <View style={styles.quickMetricBox}>
-                <Text style={styles.quickMetricValue}>148</Text>
+                <Text style={styles.quickMetricValue}>{assets ? assets.filter((a: Asset) => a.currentLocationId === 'NSY' || a.currentLocationId === 'YARD').length : 'N/A'}</Text>
                 <Text style={styles.quickMetricLabel}>IN YARD</Text>
               </View>
               <View style={styles.quickMetricBox}>
-                <Text style={[styles.quickMetricValue, { color: '#006a63' }]}>38</Text>
+                <Text style={[styles.quickMetricValue, { color: '#006a63' }]}>{assets ? assets.filter((a: Asset) => a.currentStatus === 'ALLOCATED').length : 'N/A'}</Text>
                 <Text style={styles.quickMetricLabel}>ALLOCATED</Text>
               </View>
               <View style={styles.quickMetricBox}>
-                <Text style={[styles.quickMetricValue, { color: '#860024' }]}>5</Text>
+                <Text style={[styles.quickMetricValue, { color: '#860024' }]}>{assets ? assets.filter((a: Asset) => a.currentStatus === 'EXCEPTION_LOGGED').length : 'N/A'}</Text>
                 <Text style={styles.quickMetricLabel}>HOLD/EXC</Text>
               </View>
             </View>
@@ -312,7 +312,11 @@ function SearchWagon({ database }: any) {
   );
 }
 
-export default withDatabase(SearchWagon);
+const enhanceSearch = withObservables(['database'], ({ database }: any) => ({
+  assets: database.collections.get('assets').query().observe()
+}));
+
+export default withDatabase(enhanceSearch(SearchWagonBase));
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
