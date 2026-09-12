@@ -24,7 +24,7 @@ const SEVERITIES = [
 
 function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
   const { employeeId } = useAuth();
-  
+
   const [selectedAssetId, setSelectedAssetId] = useState('');
   const [type, setType] = useState('MISSING_PARTS');
   const [severity, setSeverity] = useState('HIGH');
@@ -50,8 +50,8 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
       'Are you sure you want to report this exception? The asset will be locked until resolved.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Confirm', 
+        {
+          text: 'Confirm',
           onPress: async () => {
             setProcessing(true);
             try {
@@ -62,10 +62,12 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
                 reason
               });
               Alert.alert('Success', 'Exception reported and queued for sync.', [
-                { text: 'OK', onPress: () => {
-                  setSelectedAssetId('');
-                  setReason('');
-                } }
+                {
+                  text: 'OK', onPress: () => {
+                    setSelectedAssetId('');
+                    setReason('');
+                  }
+                }
               ]);
             } catch (err: any) {
               Alert.alert('Error', err.message || 'Failed to report exception.');
@@ -90,7 +92,7 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        
+
         {/* Sub-Header Navigation Bar */}
         <View style={styles.subHeader}>
           <View style={styles.subHeaderLeft}>
@@ -99,32 +101,12 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
             </TouchableOpacity>
             <Text style={styles.subHeaderTitle}>REPORT EXCEPTION</Text>
           </View>
-          <View style={styles.pendingBadge}>
-            <View style={styles.pendingDot} />
-            <Text style={styles.pendingText}>5 PENDING</Text>
-          </View>
-        </View>
-
-        {/* Industrial Context Callout */}
-        <View style={styles.calloutCard}>
-          <View style={styles.calloutLeft}>
-            <View style={styles.calloutIconBox}>
-              <Icon name="alert-outline" size={20} color="#860024" />
-            </View>
-            <View>
-              <Text style={styles.calloutSuper}>YARD OPERATIONS</Text>
-              <Text style={styles.calloutTitle}>Hazard & Flagged Incident Filing</Text>
-            </View>
-          </View>
-          <View style={styles.formTag}>
-            <Text style={styles.formTagText}>FORM-EX04</Text>
-          </View>
         </View>
 
         {/* Select Asset */}
         <View style={styles.fieldGroup}>
           <View style={styles.fieldHeader}>
-            <Text style={styles.fieldTitle}>Select Asset <Text style={{color:'#ba1a1a'}}>*</Text></Text>
+            <Text style={styles.fieldTitle}>Select Asset <Text style={{ color: '#ba1a1a' }}>*</Text></Text>
             <Text style={styles.fieldOptional}>MANDATORY</Text>
           </View>
           {assets.length === 0 ? (
@@ -178,7 +160,7 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
                   style={[styles.typeBtn, isSelected && styles.typeBtnActive]}
                   onPress={() => setType(t.value)}
                 >
-                  {isSelected && <Icon name="check" size={16} color="#ffffff" style={{marginRight: 4}} />}
+                  {isSelected && <Icon name="check" size={16} color="#ffffff" style={{ marginRight: 4 }} />}
                   <Text style={[styles.typeBtnText, isSelected && styles.typeBtnTextActive]}>{t.label}</Text>
                 </TouchableOpacity>
               );
@@ -214,7 +196,7 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
         {/* Reason */}
         <View style={styles.fieldGroup}>
           <View style={styles.fieldHeader}>
-            <Text style={styles.fieldTitle}>Reason / Details <Text style={{color:'#ba1a1a'}}>*</Text></Text>
+            <Text style={styles.fieldTitle}>Reason / Details <Text style={{ color: '#ba1a1a' }}>*</Text></Text>
             <Text style={styles.fieldOptional}>FIELD NOTE</Text>
           </View>
           <TextInput
@@ -233,29 +215,13 @@ function ReportExceptionScreenBase({ navigation, assets = [] }: any) {
           </View>
         </View>
 
-        {/* Photo Slot */}
-        <View style={styles.photoSlot}>
-          <View style={styles.photoLeft}>
-            <View style={styles.photoIconBox}>
-              <Icon name="camera-plus" size={22} color="#003c90" />
-            </View>
-            <View>
-              <Text style={styles.photoTitle}>Yard Photo Evidence</Text>
-              <Text style={styles.photoSub}>Attach visual inspection tag</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.captureBtn}>
-            <Text style={styles.captureBtnText}>CAPTURE</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Submit */}
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-          <Icon name="flag" size={20} color="#ffffff" style={{marginRight: 8}} />
+          <Icon name="flag" size={20} color="#ffffff" style={{ marginRight: 8 }} />
           <Text style={styles.submitText}>REPORT EXCEPTION</Text>
         </TouchableOpacity>
 
-        <View style={{height: 40}} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -278,12 +244,8 @@ const styles = StyleSheet.create({
   subHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f2f3ff', marginLeft: -8 },
   subHeaderTitle: { fontSize: 17, fontWeight: '800', color: '#131b2e', textTransform: 'uppercase', letterSpacing: 0.5 },
-  
-  pendingBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef3c7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, shadowColor: '#000', shadowOffset:{width:0, height:1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  pendingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#d97706' },
-  pendingText: { fontSize: 11, fontWeight: '800', color: '#92400e', letterSpacing: 0.5 },
 
-  calloutCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f2f3ff', padding: 12, borderRadius: 12, marginBottom: 24, shadowColor: '#000', shadowOffset:{width:0, height:1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  calloutCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f2f3ff', padding: 12, borderRadius: 12, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   calloutLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   calloutIconBox: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#ffdada', alignItems: 'center', justifyContent: 'center' },
   calloutSuper: { fontSize: 11, fontWeight: '800', color: '#434653', textTransform: 'uppercase', letterSpacing: 0.8 },
@@ -297,9 +259,9 @@ const styles = StyleSheet.create({
   fieldOptional: { fontSize: 11, fontWeight: '700', color: '#737784', letterSpacing: 0.8 },
 
   emptyNote: { fontSize: 13, color: '#737784', fontStyle: 'italic', paddingVertical: 8 },
-  
+
   assetGrid: { flexDirection: 'row', gap: 10, paddingVertical: 4 },
-  assetOption: { backgroundColor: '#ffffff', borderWidth: 2, borderColor: 'transparent', borderRadius: 12, padding: 12, minWidth: 140, shadowColor: '#000', shadowOffset:{width:0, height:1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  assetOption: { backgroundColor: '#ffffff', borderWidth: 2, borderColor: 'transparent', borderRadius: 12, padding: 12, minWidth: 140, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   assetOptionActive: { borderColor: '#0f52ba', backgroundColor: '#f2f3ff' },
   assetOptionId: { fontSize: 16, fontWeight: '800', color: '#131b2e', marginBottom: 2 },
   assetOptionStatus: { fontSize: 11, fontWeight: '600', color: '#737784', textTransform: 'uppercase' },
@@ -307,27 +269,19 @@ const styles = StyleSheet.create({
   assetOptionSubActive: { color: '#003c90' },
 
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  typeBtn: { height: 48, paddingHorizontal: 16, backgroundColor: '#ffffff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset:{width:0, height:1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1, flexDirection: 'row', flexGrow: 1 },
+  typeBtn: { height: 48, paddingHorizontal: 16, backgroundColor: '#ffffff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1, flexDirection: 'row', flexGrow: 1 },
   typeBtnActive: { backgroundColor: '#0f52ba' },
   typeBtnText: { fontSize: 15, fontWeight: '600', color: '#131b2e' },
   typeBtnTextActive: { color: '#ffffff' },
 
   severityGrid: { flexDirection: 'row', gap: 6 },
-  severityBtn: { flex: 1, height: 48, backgroundColor: '#ffffff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset:{width:0, height:1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  severityBtn: { flex: 1, height: 48, backgroundColor: '#ffffff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   severityBtnText: { fontSize: 14, fontWeight: '600', color: '#131b2e' },
 
-  reasonInput: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, minHeight: 120, fontSize: 14, color: '#131b2e', shadowColor: '#000', shadowOffset:{width:0, height:1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  reasonInput: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, minHeight: 120, fontSize: 14, color: '#131b2e', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   charCountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, marginTop: 8 },
   charMinNote: { fontSize: 11, color: '#737784' },
   charCountText: { fontSize: 11, color: '#737784', fontFamily: 'monospace' },
-
-  photoSlot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f2f3ff', padding: 12, borderRadius: 12, marginBottom: 24, shadowColor: '#000', shadowOffset:{width:0, height:1}, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  photoLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  photoIconBox: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#dae2fd', alignItems: 'center', justifyContent: 'center' },
-  photoTitle: { fontSize: 14, fontWeight: '700', color: '#131b2e' },
-  photoSub: { fontSize: 12, color: '#434653' },
-  captureBtn: { backgroundColor: '#dae2fd', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  captureBtnText: { fontSize: 11, fontWeight: '700', color: '#131b2e', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#b20033', height: 56, borderRadius: 12, shadowColor: '#b20033', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
   submitText: { color: '#ffffff', fontWeight: '800', fontSize: 16, textTransform: 'uppercase', letterSpacing: 1 },
