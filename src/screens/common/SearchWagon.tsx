@@ -115,7 +115,12 @@ export default function SearchWagon() {
       
       const token = await AsyncStorage.getItem('@Auth:token');
       const res = await fetch(`${API_BASE_URL}/dashboard/overview`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
@@ -149,7 +154,12 @@ export default function SearchWagon() {
 
       const token = await AsyncStorage.getItem('@Auth:token');
       const res = await fetch(`${API_BASE_URL}/dashboard/pipeline?search=${search}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();

@@ -35,7 +35,12 @@ export default function YardDashboardBase({ navigation }: YardDashboardProps) {
       }
 
       const token = await AsyncStorage.getItem('@Auth:token');
-      const headers = { 'Authorization': `Bearer ${token}` };
+      const headers = { 
+        'Authorization': `Bearer ${token}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      };
 
       // Fetch Locations for NSY Capacity
       const locRes = await fetch(`${API_BASE_URL}/dashboard/locations`, { headers });
