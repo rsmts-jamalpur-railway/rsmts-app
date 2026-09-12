@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image, SafeAreaView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import api from '../../services/api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -68,173 +68,300 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Image source={require('../../assets/logo_bg_removed.png')} style={{width: 80, height: 80, marginBottom: 16}} resizeMode="contain" />
-          <Text style={styles.title}>Login</Text>
-          <Text style={styles.subtitle}>Jamalpur Workshop Operations</Text>
-
-          {/* Quick Demo Fill Chips — DEV ONLY */}
-          {__DEV__ && (
-          <View style={styles.chipRow}>
-            <TouchableOpacity 
-              style={styles.chip} 
-              onPress={() => fillCredentials('admin@rsmts.gov.in', 'Admin@123!')}
-            >
-              <Text style={styles.chipText}>System Admin</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.chip} 
-              onPress={() => fillCredentials('farhanaiyyar04@gmail.com', 'Admin@123!')}
-            >
-              <Text style={styles.chipText}>Supervisor</Text>
-            </TouchableOpacity>
-          </View>
-          )}
-        </View>
-
-        <View style={styles.formContainer}>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <View style={styles.inputGroup}>
-            <Icon name="email-outline" size={20} color="#A0AEC0" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your mail"
-              placeholderTextColor="#A0AEC0"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.container}
+      >
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {/* TopBar equivalent */}
+          <View style={styles.topBar}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={styles.emeraldDot} />
+              <Text style={styles.topBarText}>EASTERN RAILWAY</Text>
+            </View>
+            <Text style={styles.topBarTextMuted}>JMPW • OPS-APP</Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Icon name="lock-outline" size={20} color="#A0AEC0" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#A0AEC0"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Icon name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#A0AEC0" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.optionsRow}>
-            <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
-              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                {rememberMe && <Icon name="check" size={12} color="#FFFFFF" />}
+          <View style={styles.header}>
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>RSMTS</Text>
+              <View style={styles.versionBadge}>
+                <Text style={styles.versionText}>V1.0.</Text>
               </View>
-              <Text style={styles.checkboxLabel}>Remember me</Text>
-            </TouchableOpacity>
+            </View>
+            <Text style={styles.subtitle}>Jamalpur Workshop Operations</Text>
+            <Text style={styles.subtext}>Rolling Stock Management Terminal</Text>
 
-            <TouchableOpacity>
-              <Text style={styles.forgotLink}>Forgot password</Text>
+            <View style={styles.offlineReadyRow}>
+              <View style={styles.emeraldDotSmall} />
+              <Text style={styles.offlineReadyText}>Offline-first sync ready</Text>
+            </View>
+          </View>
+
+          <View style={styles.formCard}>
+            <View style={styles.formHeader}>
+              <Text style={styles.formTitle}>Sign In</Text>
+              <Text style={styles.formSubtitle}>Enter your railway credentials to continue</Text>
+            </View>
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <View style={styles.fieldContainer}>
+              <Text style={styles.fieldLabel}>EMAIL</Text>
+              <View style={styles.inputGroup}>
+                <Icon name="email-outline" size={20} color="#64748b" style={styles.icon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="abc@gmail.com"
+                  placeholderTextColor="#94a3b8"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            <View style={styles.fieldContainer}>
+              <Text style={styles.fieldLabel}>PASSWORD</Text>
+              <View style={styles.inputGroup}>
+                <Icon name="lock-outline" size={20} color="#64748b" style={styles.icon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter password"
+                  placeholderTextColor="#94a3b8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+                  <Icon name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.optionsRow}>
+              <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Icon name="check" size={14} color="#FFFFFF" />}
+                </View>
+                <Text style={styles.checkboxLabel}>Remember me</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity>
+                <Text style={styles.forgotLink}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.loginButton}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <View style={styles.loginBtnContent}>
+                  <Text style={styles.loginButtonText}>Sign In</Text>
+                  <Icon name="chevron-right" size={20} color="#fff" />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Sign in</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+          {/* This flex spacer pushes the footer to the very bottom */}
+          <View style={{ flex: 1 }} />
 
-        {/* This flex spacer pushes the contact text to the very bottom of the screen */}
-        <View style={{ flex: 1 }} />
-
-        <View style={{ alignItems: 'center', paddingTop: 32 }}>
-          <Text style={{ fontSize: 12, color: '#718096' }}>
-            Don't have an account? <Text style={{ color: '#38B2AC', fontWeight: '500' }}>Contact administrator</Text>
-          </Text>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Don't have an account? <Text style={styles.footerLink}>Contact administrator</Text>
+            </Text>
+            <View style={styles.systemStatusRow}>
+              <View style={styles.emeraldDotSmall} />
+              <Text style={styles.systemStatusText}>System: Operational • ER-DIV-JMP • 256-Bit Encrypted</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f8fafc',
   },
   content: {
     flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingTop: '25%',
-    paddingHorizontal: 32,
-    paddingBottom: 32,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    zIndex: 10,
+  },
+  emeraldDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+    marginRight: 6,
+  },
+  topBarText: {
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: '600',
+    color: '#475569',
+    letterSpacing: 0.5,
+  },
+  topBarTextMuted: {
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: '500',
+    color: '#94a3b8',
   },
   header: {
-    marginBottom: 32,
+    alignItems: 'center',
+    marginBottom: 24,
+    zIndex: 10,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
-    color: '#1A202C',
-    lineHeight: 36,
+    color: '#0f172a',
+    letterSpacing: -0.5,
+  },
+  versionBadge: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  versionText: {
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: '600',
+    color: '#475569',
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
+    fontWeight: '700',
+    color: '#1e293b',
     marginTop: 4,
-    fontWeight: '500',
+  },
+  subtext: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  offlineReadyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  emeraldDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
+  },
+  offlineReadyText: {
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: '#64748b',
   },
   chipRow: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 14,
+    marginTop: 16,
     flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   chip: {
     backgroundColor: '#eff6ff',
     borderWidth: 1,
     borderColor: '#bfdbfe',
-    borderRadius: 20,
+    borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   chipText: {
     color: '#1d4ed8',
-    fontSize: 12,
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     fontWeight: '600',
   },
-  formContainer: {
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 24,
     width: '100%',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  formHeader: {
+    marginBottom: 20,
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.5,
+  },
+  formSubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    letterSpacing: 0.5,
+    marginBottom: 6,
   },
   inputGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 9999,
-    paddingHorizontal: 16,
-    height: 56,
-    marginBottom: 20,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 48,
   },
   icon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   input: {
     flex: 1,
-    color: '#1A202C',
-    fontSize: 15,
+    color: '#0f172a',
+    fontSize: 14,
     height: '100%',
   },
   optionsRow: {
@@ -249,45 +376,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkbox: {
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 6,
+    borderColor: '#cbd5e1',
+    borderRadius: 4,
     marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
   checkboxChecked: {
-    backgroundColor: '#38B2AC',
-    borderColor: '#38B2AC',
+    backgroundColor: '#002A4F',
+    borderColor: '#002A4F',
   },
   checkboxLabel: {
-    color: '#718096',
-    fontSize: 14,
-  },
-  forgotLink: {
-    color: '#38B2AC',
-    fontSize: 14,
+    color: '#475569',
+    fontSize: 13,
     fontWeight: '500',
   },
+  forgotLink: {
+    color: '#002A4F',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   loginButton: {
-    backgroundColor: '#38B2AC',
-    height: 56,
-    borderRadius: 9999,
+    backgroundColor: '#002A4F',
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  loginBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   loginButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   errorText: {
-    color: '#E53E3E',
-    textAlign: 'center',
+    color: '#ef4444',
+    fontSize: 13,
     marginBottom: 16,
     fontWeight: '500',
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  footerLink: {
+    color: '#002A4F',
+    fontWeight: '600',
+  },
+  systemStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  systemStatusText: {
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: '#94a3b8',
   }
 });
